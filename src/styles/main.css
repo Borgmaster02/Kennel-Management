@@ -34,7 +34,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .eyebrow { margin: 0 0 .25rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; font-size: .73rem; color: var(--muted); }
 .topbar .eyebrow { color: #c5e4ef; }
 
-.tabbar { position: sticky; top: 0; z-index: 10; display: flex; gap: .4rem; padding: .65rem clamp(.75rem, 2vw, 2rem); background: rgba(243, 246, 248, 0.92); backdrop-filter: blur(10px); overflow-x: auto; border-bottom: 1px solid var(--line); }
+.tabbar { position: sticky; top: 0; z-index: 100; display: flex; gap: .4rem; padding: .65rem clamp(.75rem, 2vw, 2rem); background: rgba(243, 246, 248, 0.92); backdrop-filter: blur(10px); overflow: visible; border-bottom: 1px solid var(--line); }
 .tab { display: flex; align-items: center; gap: .45rem; border: 1px solid transparent; background: transparent; color: var(--muted); padding: .7rem .9rem; border-radius: 999px; white-space: nowrap; font-weight: 700; }
 .tab.active { background: var(--primary); color: white; }
 .tab:hover:not(.active) { background: var(--surface); border-color: var(--line); color: var(--text); }
@@ -664,6 +664,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   display: flex;
   gap: 0.4rem;
   overflow-x: auto;
+  min-width: 0;
 }
 
 .more-menu {
@@ -680,10 +681,10 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 }
 
 .more-menu-panel {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 0.5rem);
-  z-index: 30;
+  position: fixed;
+  right: 1rem;
+  top: 7.6rem;
+  z-index: 1000;
   min-width: 220px;
   display: grid;
   gap: 0.4rem;
@@ -786,8 +787,10 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     position: fixed;
     right: 0.75rem;
     left: 0.75rem;
-    bottom: 5.2rem;
-    top: auto;
+    top: 4.5rem;
+    bottom: auto;
+    max-height: min(75vh, 520px);
+    overflow-y: auto;
   }
 
   .profile-list-row {
@@ -954,4 +957,33 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   .review-dog-jump-list { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 0.25rem; }
   .dog-jump { flex: 0 0 auto; }
   .mini-chart-row { grid-template-columns: 1fr; gap: 0.35rem; }
+}
+
+
+/* v12 menu visibility and dog profile insights */
+.more-menu[open] summary {
+  background: var(--primary);
+  color: white;
+}
+.profile-list-spaced {
+  margin-top: 0.9rem;
+}
+.quick-backup-warning {
+  margin-top: -0.25rem;
+}
+@media (max-width: 720px) {
+  .clean-tabbar {
+    overflow: visible;
+  }
+  .more-menu[open]::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.08);
+    z-index: 999;
+    pointer-events: none;
+  }
+  .more-menu-panel {
+    z-index: 1001;
+  }
 }

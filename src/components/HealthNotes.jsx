@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { EmptyState, StatusBadge } from "./common";
 import { formatDate, todayIso } from "../utils/dateUtils";
 import { downloadCsv, healthHeaders } from "../utils/exportCsv";
+import { HEALTH_EVENT_TYPES } from "../data/options";
 
-const EVENT_TYPES = ["Health Note", "Heat", "Injury", "Sick", "Vet", "Paws", "Rest", "Medication", "Other"];
+const EVENT_TYPES = HEALTH_EVENT_TYPES;
 const PROFILE_STATUSES = ["Rest", "Injured", "Sick", "In Heat", "Light Training", "Watch", "Active", "Build-up", "Retired"];
 
 function emptyDraft(dogs) {
@@ -19,14 +20,63 @@ function emptyDraft(dogs) {
   };
 }
 
-export default function HealthNotes({ dogs = [], healthEvents = [], onAddEvent, onUpdateEvent, onDeleteEvent }) {
+export default function HealthNotes({ dogs = [], healthEvents = [], onAddEvent, onAddEvents, onUpdateEvent, onDeleteEvent }) {
   const [draft, setDraft] = useState(() => emptyDraft(dogs));
+  const [batchDraft, setBatchDraft] = useState(() => ({ date: todayIso(), note: "Deworming given today.", nextCheck: "", selectedDogIds: [] }));
   const [editingId, setEditingId] = useState(null);
   const [dogFilter, setDogFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
   const [query, setQuery] = useState("");
 
   const dogMap = useMemo(() => new Map(dogs.map((dog) => [dog.id, dog])), [dogs]);
+
+  const activeDogIds = useMemo(() => dogs
+    .filter((dog) => !["Rest", "Injured", "Sick", "Retired"].includes(dog.healthStatus))
+    .map((dog) => dog.id), [dogs]);
+
+  const toggleBatchDog = (dogId) => {
+    setBatchDraft((current) => {
+      const selected = new Set(current.selectedDogIds || []);
+      if (selected.has(dogId)) selected.delete(dogId);
+      else selected.add(dogId);
+      return { ...current, selectedDogIds: Array.from(selected) };
+    });
+  };
+
+  const selectAllBatchDogs = () => setBatchDraft((current) => ({ ...current, selectedDogIds: dogs.map((dog) => dog.id) }));
+  const selectActiveBatchDogs = () => setBatchDraft((current) => ({ ...current, selectedDogIds: activeDogIds }));
+  const clearBatchDogs = () => setBatchDraft((current) => ({ ...current, selectedDogIds: [] }));
+
+  const saveBatchDeworming = () => {
+    const selectedDogIds = batchDraft.selectedDogIds || [];
+    if (!selectedDogIds.length) {
+      alert("Please select at least one dog.");
+      return;
+    }
+    const confirmed = window.confirm(`Save deworming note for ${selectedDogIds.length} dogs?`);
+    if (!confirmed) return;
+    const now = new Date().toISOString();
+    const events = selectedDogIds.map((dogId, index) => {
+      const dog = dogMap.get(dogId);
+      return {
+        id: `health-${Date.now()}-worm-${index}`,
+        dogId,
+        dogName: dog?.name || "",
+        sex: dog?.sex || "",
+        date: batchDraft.date || todayIso(),
+        type: "Deworming",
+        status: dog?.healthStatus || "Active",
+        note: batchDraft.note.trim() || "Deworming given today.",
+        nextCheck: batchDraft.nextCheck || "",
+        applyToDogProfile: false,
+        createdAt: now,
+        updatedAt: "",
+      };
+    });
+    if (typeof onAddEvents === "function") onAddEvents(events);
+    else events.forEach((event) => onAddEvent(event));
+    setBatchDraft({ date: todayIso(), note: "Deworming given today.", nextCheck: "", selectedDogIds: [] });
+  };
 
   const preparedEvents = useMemo(() => healthEvents.map((event) => {
     const dog = dogMap.get(event.dogId);
@@ -79,7 +129,7 @@ export default function HealthNotes({ dogs = [], healthEvents = [], onAddEvent, 
       alert("Please choose a dog.");
       return;
     }
-    if (!draft.note.trim() && draft.type !== "Heat") {
+    if (!draft.note.trim() && !["Heat", "Deworming"].includes(draft.type)) {
       alert("Please add a short note.");
       return;
     }
@@ -112,6 +162,40 @@ export default function HealthNotes({ dogs = [], healthEvents = [], onAddEvent, 
         <button className="secondary" onClick={() => downloadCsv("health-notes.csv", preparedEvents, healthHeaders)}>Export Health CSV</button>
       </div>
 
+      <section className="panel highlight-panel">
+        <div className="page-header split inner-header">
+          <div>
+            <h3>Batch deworming / worm cure</h3>
+            <p className="muted-text">Use this when many dogs received worm cure on the same day. It creates one health note per selected dog.</p>
+          </div>
+          <span className="pill">{(batchDraft.selectedDogIds || []).length} selected</span>
+        </div>
+        <div className="form-grid">
+          <label>Date<input type="date" value={batchDraft.date} onChange={(event) => setBatchDraft((current) => ({ ...current, date: event.target.value }))} /></label>
+          <label>Next check / next dose<input type="date" value={batchDraft.nextCheck} onChange={(event) => setBatchDraft((current) => ({ ...current, nextCheck: event.target.value }))} /></label>
+          <label className="full-span">Note<textarea value={batchDraft.note} onChange={(event) => setBatchDraft((current) => ({ ...current, note: event.target.value }))} placeholder="Product, dosage or short note, e.g. worm cure given after feeding" /></label>
+        </div>
+        <div className="button-row wrap">
+          <button className="secondary" onClick={selectAllBatchDogs}>Select all dogs</button>
+          <button className="secondary" onClick={selectActiveBatchDogs}>Select active dogs</button>
+          <button className="ghost" onClick={clearBatchDogs}>Clear selection</button>
+        </div>
+        <div className="dog-select-grid compact-dog-grid">
+          {dogs.map((dog) => {
+            const selected = (batchDraft.selectedDogIds || []).includes(dog.id);
+            return (
+              <button key={dog.id} type="button" className={selected ? "dog-select-card selected" : "dog-select-card"} onClick={() => toggleBatchDog(dog.id)}>
+                <strong>{dog.name}</strong>
+                <small>{dog.sex} · {dog.healthStatus}</small>
+              </button>
+            );
+          })}
+        </div>
+        <div className="form-actions">
+          <button className="primary" onClick={saveBatchDeworming}>Save deworming for selected dogs</button>
+        </div>
+      </section>
+
       <div className="two-column">
         <section className="panel">
           <h3>{editingId ? "Edit health note" : "Add health note"}</h3>
@@ -124,8 +208,8 @@ export default function HealthNotes({ dogs = [], healthEvents = [], onAddEvent, 
               setDraft((current) => ({
                 ...current,
                 type,
-                status: type === "Heat" ? "In Heat" : type === "Injury" ? "Injured" : type === "Sick" ? "Sick" : type === "Rest" ? "Rest" : current.status,
-                applyToDogProfile: ["Heat", "Injury", "Sick", "Rest"].includes(type) ? true : current.applyToDogProfile,
+                status: type === "Heat" ? "In Heat" : type === "Injury" ? "Injured" : type === "Sick" ? "Sick" : type === "Rest" ? "Rest" : type === "Deworming" ? "Active" : current.status,
+                applyToDogProfile: ["Heat", "Injury", "Sick", "Rest"].includes(type) ? true : type === "Deworming" ? false : current.applyToDogProfile,
               }));
             }}>{EVENT_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label>
             <label>Status<select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value }))}><option>Active</option><option>Watch</option><option>Light Training</option><option>Rest</option><option>Injured</option><option>Sick</option><option>In Heat</option><option>Build-up</option><option>Retired</option></select></label>

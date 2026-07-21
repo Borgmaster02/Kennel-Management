@@ -66,6 +66,11 @@ export default function App() {
     ? state.trainingLog.filter((log) => log.trainingId === editingTrainingId)
     : [];
 
+  const backupStatus = {
+    sessionsSinceBackup: Math.max(0, state.trainingSessions.length - Number(state.meta?.lastBackupSessionCount || 0)),
+    lastBackupAt: state.meta?.lastBackupAt || "",
+  };
+
   const openTab = (tabId) => {
     if (tabId !== "new-training") {
       setEditingTrainingId(null);
@@ -295,6 +300,18 @@ export default function App() {
     setToast(event.applyToDogProfile ? "Health note saved and dog status updated." : "Health note saved.");
   };
 
+
+  const addHealthEvents = (events = []) => {
+    const cleanEvents = Array.isArray(events) ? events.filter(Boolean) : [];
+    if (!cleanEvents.length) return;
+    setState((current) => ({
+      ...current,
+      dogs: cleanEvents.reduce((dogs, event) => applyHealthEventToDog(dogs, event), current.dogs),
+      healthEvents: [...cleanEvents, ...(current.healthEvents || [])],
+    }));
+    setToast(`${cleanEvents.length} health notes saved.`);
+  };
+
   const updateHealthEvent = (event) => {
     setState((current) => ({
       ...current,
@@ -386,6 +403,7 @@ export default function App() {
               fixedTeams={state.fixedTeams || []}
               onSave={saveTraining}
               lastQuickTraining={state.meta?.lastQuickTraining || null}
+              backupStatus={backupStatus}
               onOpenFullTraining={() => openTab("new-training")}
             />
           )}
@@ -406,7 +424,7 @@ export default function App() {
           {activeTab === "dogs" && <Dogs dogs={dogsWithStats} logs={state.trainingLog} healthEvents={state.healthEvents || []} onAddDog={addDog} onUpdateDog={updateDog} onAddHealthEvent={addHealthEvent} />}
           {activeTab === "team-planner" && <TeamPlanner dogs={dogsWithStats} onStartTraining={() => openTab("new-training")} onStartTrainingWithTeam={startTrainingWithTeam} onSaveFixedTeam={addFixedTeam} />}
           {activeTab === "fixed-teams" && <FixedTeams teams={state.fixedTeams || []} dogs={dogsWithStats} onAddTeam={addFixedTeam} onUpdateTeam={updateFixedTeam} onDeleteTeam={deleteFixedTeam} onDuplicateTeam={duplicateFixedTeam} />}
-          {activeTab === "health" && <HealthNotes dogs={state.dogs} healthEvents={state.healthEvents || []} onAddEvent={addHealthEvent} onUpdateEvent={updateHealthEvent} onDeleteEvent={deleteHealthEvent} />}
+          {activeTab === "health" && <HealthNotes dogs={state.dogs} healthEvents={state.healthEvents || []} onAddEvent={addHealthEvent} onAddEvents={addHealthEvents} onUpdateEvent={updateHealthEvent} onDeleteEvent={deleteHealthEvent} />}
           {activeTab === "sessions" && <TrainingSessions sessions={state.trainingSessions} onDeleteTraining={deleteTraining} onEditTraining={startEditTraining} onCreateTeamFromTraining={createFixedTeamFromSession} />}
           {activeTab === "log" && <TrainingLog logs={state.trainingLog} dogs={state.dogs} sessions={state.trainingSessions} />}
           {activeTab === "routes" && <Routes routes={state.routes} onAddRoute={addRoute} onUpdateRoute={updateRoute} onDeleteRoute={deleteRoute} />}

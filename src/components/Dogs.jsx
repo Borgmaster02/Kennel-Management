@@ -3,7 +3,7 @@ import DogForm from "./DogForm";
 import { StatusBadge, EmptyState } from "./common";
 import { calculateAge, formatDate } from "../utils/dateUtils";
 import { downloadCsv, dogHeaders } from "../utils/exportCsv";
-import { POSITIONS, HEALTH_STATUSES } from "../data/options";
+import { POSITIONS, HEALTH_STATUSES, HEALTH_EVENT_TYPES } from "../data/options";
 
 export default function Dogs({ dogs, logs = [], healthEvents = [], onAddDog, onUpdateDog, onAddHealthEvent }) {
   const [query, setQuery] = useState("");
@@ -181,6 +181,47 @@ function DogProfile({ dog, logs, healthEvents, onClose, onEdit, onAddHealthEvent
     return { label: `${recent.toFixed(1)} recent avg · ${diff >= 0 ? "+" : ""}${diff.toFixed(1)} trend`, recent, previous, chartRows };
   }, [sortedLogs]);
 
+  const profileInsights = useMemo(() => {
+    const countBy = (key) => {
+      const map = new Map();
+      sortedLogs.forEach((log) => {
+        const label = String(log[key] || "Unknown").trim() || "Unknown";
+        const row = map.get(label) || { label, runs: 0, km: 0, formSum: 0, formCount: 0, problems: 0 };
+        row.runs += 1;
+        row.km += Number(log.distance || 0);
+        const form = Number(log.form || 0);
+        if (form) { row.formSum += form; row.formCount += 1; }
+        if (log.problem || log.removed) row.problems += 1;
+        map.set(label, row);
+      });
+      return Array.from(map.values()).map((row) => ({
+        ...row,
+        avgForm: row.formCount ? row.formSum / row.formCount : 0,
+      })).sort((a, b) => b.runs - a.runs || b.km - a.km);
+    };
+
+    const positions = countBy("position");
+    const routes = countBy("route");
+    const problemLogs = sortedLogs.filter((log) => log.problem || log.removed || log.removedReason || (log.dogNote && /paw|limp|ice|sick|heat|tired|problem|injur/i.test(log.dogNote))).slice(0, 8);
+    const totalRuns = sortedLogs.length;
+    const problemRuns = sortedLogs.filter((log) => log.problem || log.removed).length;
+
+    return {
+      positions,
+      routes,
+      bestPosition: positions[0] || null,
+      mostFrequentRoute: routes[0] || null,
+      problemLogs,
+      problemRate: totalRuns ? (problemRuns / totalRuns) * 100 : 0,
+    };
+  }, [sortedLogs]);
+
+  const monthlyChartRows = useMemo(() => {
+    const rows = monthRows.slice().reverse();
+    const maxKm = Math.max(...rows.map((row) => row.km), 1);
+    return rows.map((row) => ({ label: row.month, value: row.km, detail: `${row.km.toFixed(1)} km · ${row.runs} runs`, maxKm }));
+  }, [monthRows]);
+
   const addHealthFromProfile = () => {
     if (!onAddHealthEvent) return;
     const event = {
@@ -227,6 +268,9 @@ function DogProfile({ dog, logs, healthEvents, onClose, onEdit, onAddHealthEvent
         <div className="stat-card"><span>Last 10 km</span><strong>{dog.stats.last10Km.toFixed(1)}</strong></div>
         <div className="stat-card"><span>Days since run</span><strong>{dog.stats.daysSinceLastTraining === "" ? "—" : dog.stats.daysSinceLastTraining}</strong></div>
         <div className="stat-card"><span>Form trend</span><strong>{formTrend.label}</strong></div>
+        <div className="stat-card"><span>Best position</span><strong>{profileInsights.bestPosition ? profileInsights.bestPosition.label : "—"}</strong><small>{profileInsights.bestPosition ? `${profileInsights.bestPosition.runs} runs · ${profileInsights.bestPosition.km.toFixed(1)} km` : "No data"}</small></div>
+        <div className="stat-card"><span>Most used route</span><strong>{profileInsights.mostFrequentRoute ? profileInsights.mostFrequentRoute.label : "—"}</strong><small>{profileInsights.mostFrequentRoute ? `${profileInsights.mostFrequentRoute.runs} runs` : "No data"}</small></div>
+        <div className="stat-card"><span>Problem rate</span><strong>{profileInsights.problemRate.toFixed(0)}%</strong><small>Problem or removed runs</small></div>
       </div>
 
       {showHealthForm && (
@@ -234,7 +278,7 @@ function DogProfile({ dog, logs, healthEvents, onClose, onEdit, onAddHealthEvent
           <h3>Add health note for {dog.name}</h3>
           <div className="form-grid">
             <label>Date<input type="date" value={healthDraft.date} onChange={(event) => setHealthDraft((current) => ({ ...current, date: event.target.value }))} /></label>
-            <label>Type<select value={healthDraft.type} onChange={(event) => setHealthDraft((current) => ({ ...current, type: event.target.value, status: event.target.value === "Heat" ? "In Heat" : current.status }))}>{["Health Note", "Heat", "Injury", "Sick", "Vet", "Paws", "Rest", "Medication", "Other"].map((type) => <option key={type}>{type}</option>)}</select></label>
+            <label>Type<select value={healthDraft.type} onChange={(event) => setHealthDraft((current) => ({ ...current, type: event.target.value, status: event.target.value === "Heat" ? "In Heat" : event.target.value === "Injury" ? "Injured" : event.target.value === "Sick" ? "Sick" : event.target.value === "Rest" ? "Rest" : event.target.value === "Deworming" ? "Active" : current.status }))}>{HEALTH_EVENT_TYPES.map((type) => <option key={type}>{type}</option>)}</select></label>
             <label>Status<select value={healthDraft.status} onChange={(event) => setHealthDraft((current) => ({ ...current, status: event.target.value }))}>{HEALTH_STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label>
             <label>Next check<input type="date" value={healthDraft.nextCheck} onChange={(event) => setHealthDraft((current) => ({ ...current, nextCheck: event.target.value }))} /></label>
             <label className="full-span">Note<textarea value={healthDraft.note} onChange={(event) => setHealthDraft((current) => ({ ...current, note: event.target.value }))} placeholder="Short note" /></label>
@@ -261,9 +305,12 @@ function DogProfile({ dog, logs, healthEvents, onClose, onEdit, onAddHealthEvent
         <div className="profile-section">
           <h3>Monthly kilometers</h3>
           {!monthRows.length ? <EmptyState title="No monthly data" text="Monthly kilometers appear after trainings are saved." /> : (
-            <div className="profile-list">
-              {monthRows.map((row) => <div className="profile-list-row" key={row.month}><div><strong>{row.month}</strong><small>{row.runs} runs</small></div><span className="pill">{row.km.toFixed(1)} km</span></div>)}
-            </div>
+            <>
+              <MiniBarChart rows={monthlyChartRows} maxValue={Math.max(...monthlyChartRows.map((row) => row.value), 1)} />
+              <div className="profile-list profile-list-spaced">
+                {monthRows.map((row) => <div className="profile-list-row" key={row.month}><div><strong>{row.month}</strong><small>{row.runs} runs</small></div><span className="pill">{row.km.toFixed(1)} km</span></div>)}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -292,6 +339,38 @@ function DogProfile({ dog, logs, healthEvents, onClose, onEdit, onAddHealthEvent
             <MiniBarChart rows={formTrend.chartRows} maxValue={5} compact />
           )}
           <p className="muted-text">Compares the latest 5 form scores with the previous 5. This is only a simple helper, not a medical or performance diagnosis.</p>
+        </div>
+      </div>
+
+      <div className="two-column">
+        <div className="profile-section">
+          <h3>Position history</h3>
+          {!profileInsights.positions.length ? <EmptyState title="No position data" text="Positions appear after trainings are saved." /> : (
+            <div className="profile-list">
+              {profileInsights.positions.slice(0, 6).map((row) => (
+                <div className="profile-list-row" key={row.label}>
+                  <div><strong>{row.label}</strong><small>{row.runs} runs · avg form {row.avgForm ? row.avgForm.toFixed(1) : "—"}</small></div>
+                  <span className="pill">{row.km.toFixed(1)} km</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="profile-section">
+          <h3>Problem history</h3>
+          {!profileInsights.problemLogs.length ? (
+            <EmptyState title="No problem history" text="Runs with problems, removed status or important notes will appear here." />
+          ) : (
+            <div className="profile-list">
+              {profileInsights.problemLogs.map((log) => (
+                <div className="profile-list-row" key={log.id}>
+                  <div><strong>{formatDate(log.date)} · {log.route}</strong><small>{log.removed ? `Removed: ${log.removedReason || "no reason added"}` : log.problem ? "Problem marked" : "Note"}</small><small>{log.dogNote || "—"}</small></div>
+                  <span className="pill">{Number(log.distance || 0).toFixed(1)} km</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

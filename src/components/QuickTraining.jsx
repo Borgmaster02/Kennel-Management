@@ -9,7 +9,7 @@ function makeTrainingId() {
   return `TR-${new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14)}`;
 }
 
-export default function QuickTraining({ dogs, routes = [], guides = [], fixedTeams = [], lastQuickTraining = null, onSave, onOpenFullTraining }) {
+export default function QuickTraining({ dogs, routes = [], guides = [], fixedTeams = [], lastQuickTraining = null, backupStatus = null, onSave, onOpenFullTraining }) {
   const [date, setDate] = useState(todayIso());
   const [trainingType, setTrainingType] = useState(lastQuickTraining?.trainingType || "ATV");
   const [routeName, setRouteName] = useState(lastQuickTraining?.routeName || "");
@@ -149,6 +149,13 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
             <p className="muted-text">Guide: {lastQuickTraining.guide || "—"} · Type: {lastQuickTraining.trainingType || "ATV"}</p>
           </div>
           <button className="primary" onClick={useLastSetup}>Use last setup</button>
+        </section>
+      )}
+
+      {backupStatus?.sessionsSinceBackup >= 5 && (
+        <section className="panel warning-panel backup-dashboard-warning quick-backup-warning">
+          <h3>Backup soon</h3>
+          <p>You have saved {backupStatus.sessionsSinceBackup} trainings since the last JSON backup. It is safest to download a backup before uploading a new website version.</p>
         </section>
       )}
 

@@ -54,3 +54,19 @@ Version 1 stores data in the browser localStorage. This is stable for first loca
 - Dog profiles now show simple no-dependency bar charts for monthly kilometers and recent form scores.
 - Training review/edit has a dog jump list so editing many dogs is easier on mobile.
 - Local data migration was updated to data version 11 while keeping older JSON backups importable.
+
+## v12 updates
+
+- Fixed the More menu so it opens above the page instead of being clipped inside the horizontal navigation bar.
+- Quick Training now shows a backup warning when several trainings have been saved since the last JSON backup.
+- Dog profiles now include best/most-used position, most-used route, problem rate, position history and problem history.
+- Monthly kilometers in Dog Profile now also show as a small bar chart.
+- Local data migration was updated to data version 12 while keeping older JSON backups importable.
+
+## v13 updates
+
+- Health now includes a Deworming / worm cure event type.
+- Added a batch deworming panel in Health to record worm cure for many dogs at once.
+- Batch deworming creates one health note per selected dog, so each dog profile keeps its own history.
+- Dog Profile health notes can also use the Deworming type.
+- Local data migration was updated to data version 13 while keeping older JSON backups importable.

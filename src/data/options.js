@@ -57,6 +57,18 @@ export const INITIAL_ROUTES = [
   { id: "route-open", name: "Open distance", distance: "", difficulty: "Variable", notes: "Use this when the route or distance changes." },
 ];
 
+export const HEALTH_EVENT_TYPES = [
+  "Health Note",
+  "Heat",
+  "Injury",
+  "Sick",
+  "Vet",
+  "Paws",
+  "Rest",
+  "Medication",
+  "Deworming",
+  "Other",
+];
 
 export const TEAM_CATEGORIES = [
   "Tour Team",
