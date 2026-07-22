@@ -16,6 +16,9 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
   const [distance, setDistance] = useState(lastQuickTraining?.distance ? String(lastQuickTraining.distance) : "");
   const [guide, setGuide] = useState(lastQuickTraining?.guide || guides[0] || "");
   const [teamId, setTeamId] = useState(lastQuickTraining?.teamId || "");
+  const [teamMode, setTeamMode] = useState(lastQuickTraining?.dogIds?.length ? "individual" : "fixed");
+  const [selectedDogIds, setSelectedDogIds] = useState(lastQuickTraining?.dogIds || []);
+  const [dogSearch, setDogSearch] = useState("");
   const [note, setNote] = useState("");
   const [step, setStep] = useState("route");
 
@@ -38,17 +41,34 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
     setDistance(lastQuickTraining.distance ? String(lastQuickTraining.distance) : "");
     setGuide(lastQuickTraining.guide || guides[0] || "");
     setTeamId(lastQuickTraining.teamId || "");
+    setTeamMode(lastQuickTraining.dogIds?.length ? "individual" : "fixed");
+    setSelectedDogIds(lastQuickTraining.dogIds || []);
     setStep("save");
   };
 
   const selectableRoutes = useMemo(() => routes.filter((route) => route.name !== "Open distance"), [routes]);
   const selectedTeam = fixedTeams.find((team) => team.id === teamId) || null;
   const teamDogs = useMemo(() => {
+    if (teamMode === "individual") {
+      return selectedDogIds.map((dogId) => dogs.find((dog) => dog.id === dogId)).filter(Boolean)
+        .map((dog) => ({ dog, position: dog.mainPosition || "Team" }));
+    }
     if (!selectedTeam) return [];
     return (selectedTeam.members || [])
       .map((member) => ({ ...member, dog: dogs.find((dog) => dog.id === member.dogId) }))
       .filter((member) => member.dog);
-  }, [selectedTeam, dogs]);
+  }, [teamMode, selectedDogIds, selectedTeam, dogs]);
+
+  const filteredDogs = useMemo(() => {
+    const query = dogSearch.trim().toLowerCase();
+    return [...dogs]
+      .filter((dog) => !query || dog.name.toLowerCase().includes(query))
+      .sort((a, b) => Number(a.stats?.seasonKm || 0) - Number(b.stats?.seasonKm || 0));
+  }, [dogs, dogSearch]);
+
+  const toggleDog = (dogId) => setSelectedDogIds((current) => current.includes(dogId)
+    ? current.filter((id) => id !== dogId)
+    : [...current, dogId]);
 
   const chooseRoute = (route) => {
     setRouteName(route?.name || "");
@@ -56,14 +76,15 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
     setStep("km");
   };
 
-  const canSave = date && trainingType && Number(distance) > 0 && guide.trim() && selectedTeam && teamDogs.length;
+  const teamName = teamMode === "individual" ? "Individual" : selectedTeam?.name || "";
+  const canSave = date && trainingType && Number(distance) > 0 && guide.trim() && teamDogs.length > 0 && (teamMode === "individual" || selectedTeam);
 
   const save = () => {
     if (!canSave) {
-      alert("Please choose date, training type, distance, guide and fixed team.");
+      alert("Please choose date, training type, distance, guide and at least one dog.");
       return;
     }
-    const confirmed = window.confirm(`Save quick training with ${selectedTeam.name} and ${teamDogs.length} dogs?`);
+    const confirmed = window.confirm(`Save quick training with ${teamName} and ${teamDogs.length} dogs?`);
     if (!confirmed) return;
 
     const trainingId = makeTrainingId();
@@ -75,8 +96,8 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
       distance: Number(distance || 0),
       trainingType,
       guide: guide.trim(),
-      fixedTeamId: selectedTeam.id,
-      fixedTeamName: selectedTeam.name,
+      fixedTeamId: teamMode === "fixed" ? selectedTeam.id : "",
+      fixedTeamName: teamName,
       numberOfDogs: teamDogs.length,
       generalNote: note,
       createdAt: timestamp,
@@ -95,8 +116,8 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
       position: member.position || member.dog.mainPosition || "Team",
       trainingType: session.trainingType,
       guide: session.guide,
-      fixedTeamId: selectedTeam.id,
-      fixedTeamName: selectedTeam.name,
+      fixedTeamId: teamMode === "fixed" ? selectedTeam.id : "",
+      fixedTeamName: teamName,
       form: Number(member.dog.form || 3),
       problem: false,
       dogNote: "",
@@ -115,8 +136,9 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
           routeName,
           distance: Number(distance || 0),
           guide: session.guide,
-          teamId: selectedTeam.id,
-          teamName: selectedTeam.name,
+          teamId: teamMode === "fixed" ? selectedTeam.id : "",
+          teamName,
+          dogIds: teamMode === "individual" ? teamDogs.map((member) => member.dog.id) : [],
           trainingType: session.trainingType,
           savedAt: timestamp,
         },
@@ -126,6 +148,9 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
     setRouteName("");
     setDistance("");
     setTeamId("");
+    setTeamMode("fixed");
+    setSelectedDogIds([]);
+    setDogSearch("");
     setNote("");
     setStep("route");
   };
@@ -136,7 +161,7 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
         <div>
           <p className="eyebrow">Fastest phone entry</p>
           <h2>Quick Training</h2>
-          <p className="muted-text">Use this for normal trainings with a fixed team. Details can be edited afterwards in Sessions.</p>
+          <p className="muted-text">Use a fixed team or quickly pick individual dogs. Details can be edited afterwards in Sessions.</p>
         </div>
         <button className="secondary" onClick={onOpenFullTraining}>Open full training entry</button>
       </div>
@@ -168,7 +193,7 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
         </div>
         <div className="quick-pill-row">
           <span className="pill">Route: {routeName || "Open distance"}</span>
-          <span className="pill">Team: {selectedTeam?.name || "Not selected"}</span>
+          <span className="pill">Team: {teamDogs.length ? teamName : "Not selected"}</span>
           <span className="pill">Dogs: {teamDogs.length}</span>
         </div>
       </section>
@@ -212,9 +237,13 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
 
       {step === "team" && (
         <section className="panel">
-          <h3>3 · Choose fixed team</h3>
-          {!fixedTeams.length ? (
-            <EmptyState title="No fixed teams yet" text="Create fixed teams first, or use the full training entry for manual dog selection." />
+          <div className="team-mode-switch" role="group" aria-label="Team selection mode">
+            <button className={teamMode === "fixed" ? "status-chip active" : "status-chip"} onClick={() => setTeamMode("fixed")}>Fixed team</button>
+            <button className={teamMode === "individual" ? "status-chip active" : "status-chip"} onClick={() => { setTeamMode("individual"); setTeamId(""); }}>Individual</button>
+          </div>
+          <h3>3 · {teamMode === "individual" ? "Choose individual dogs" : "Choose fixed team"}</h3>
+          {teamMode === "fixed" && (!fixedTeams.length ? (
+            <EmptyState title="No fixed teams yet" text="Choose Individual to select dogs yourself." />
           ) : (
             <div className="selection-card-grid">
               {fixedTeams.map((team) => (
@@ -224,6 +253,28 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
                   <span className="muted-text">{(team.members || []).slice(0, 6).map((member) => dogs.find((dog) => dog.id === member.dogId)?.name).filter(Boolean).join(", ")}</span>
                 </button>
               ))}
+            </div>
+          ))}
+          {teamMode === "individual" && (
+            <div className="individual-dog-picker">
+              <div className="individual-picker-head">
+                <label>Find dog<input type="search" value={dogSearch} onChange={(event) => setDogSearch(event.target.value)} placeholder="Search by name" /></label>
+                <span className="pill">{selectedDogIds.length} selected</span>
+              </div>
+              <p className="muted-text">Dogs with the fewest season kilometers are shown first.</p>
+              <div className="quick-dog-grid">
+                {filteredDogs.map((dog) => {
+                  const selected = selectedDogIds.includes(dog.id);
+                  return (
+                    <button type="button" key={dog.id} aria-pressed={selected} className={selected ? "select-dog-card selected" : "select-dog-card"} onClick={() => toggleDog(dog.id)}>
+                      <span className="quick-dog-card-head"><strong>{dog.name}</strong><StatusBadge value={dog.healthStatus} /></span>
+                      <small>{Number(dog.stats?.seasonKm || 0).toFixed(1)} km this season · {dog.stats?.numberOfRuns || 0} runs</small>
+                      <small>{dog.stats?.daysSinceLastTraining === "" ? "Never trained" : `${dog.stats.daysSinceLastTraining} days since last training`}</small>
+                    </button>
+                  );
+                })}
+              </div>
+              <button className="primary" disabled={!selectedDogIds.length} onClick={() => setStep("guide")}>Next: guide ({selectedDogIds.length})</button>
             </div>
           )}
         </section>
@@ -253,7 +304,7 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
               <div><dt>Route</dt><dd>{routeName || "Open distance"}</dd></div>
               <div><dt>Distance</dt><dd>{distance || "—"} km</dd></div>
               <div><dt>Guide</dt><dd>{guide || "—"}</dd></div>
-              <div><dt>Team</dt><dd>{selectedTeam?.name || "—"}</dd></div>
+              <div><dt>Team</dt><dd>{teamDogs.length ? teamName : "—"}</dd></div>
             </dl>
             <div className="team-overview-grid">
               {teamDogs.map((member) => <span className="pill" key={member.dog.id}>{member.position || member.dog.mainPosition || "Team"}: {member.dog.name} <StatusBadge value={member.dog.healthStatus} /></span>)}
