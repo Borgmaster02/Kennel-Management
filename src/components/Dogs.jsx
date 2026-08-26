@@ -5,7 +5,7 @@ import { calculateAge, formatDate } from "../utils/dateUtils";
 import { downloadCsv, dogHeaders } from "../utils/exportCsv";
 import { POSITIONS, HEALTH_STATUSES, HEALTH_EVENT_TYPES } from "../data/options";
 
-export default function Dogs({ dogs, logs = [], healthEvents = [], onAddDog, onUpdateDog, onAddHealthEvent }) {
+export default function Dogs({ dogs, logs = [], healthEvents = [], onAddDog, onUpdateDog, onSetArchived, onAddHealthEvent }) {
   const [query, setQuery] = useState("");
   const [sexFilter, setSexFilter] = useState("All");
   const [positionFilter, setPositionFilter] = useState("All");
@@ -13,17 +13,19 @@ export default function Dogs({ dogs, logs = [], healthEvents = [], onAddDog, onU
   const [editingDog, setEditingDog] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedDogId, setSelectedDogId] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
   const filteredDogs = useMemo(() => {
     const search = query.trim().toLowerCase();
     return dogs.filter((dog) => {
+      if (Boolean(dog.archived) !== showArchived) return false;
       const matchesSearch = !search || dog.name.toLowerCase().includes(search);
       const matchesSex = sexFilter === "All" || dog.sex === sexFilter;
       const matchesPosition = positionFilter === "All" || dog.mainPosition === positionFilter || dog.alternativePosition === positionFilter;
       const matchesStatus = statusFilter === "All" || dog.healthStatus === statusFilter || dog.trainingStatus === statusFilter;
       return matchesSearch && matchesSex && matchesPosition && matchesStatus;
     });
-  }, [dogs, query, sexFilter, positionFilter, statusFilter]);
+  }, [dogs, query, sexFilter, positionFilter, statusFilter, showArchived]);
 
   const dogHealthCounts = useMemo(() => {
     const counts = new Map();
@@ -58,6 +60,9 @@ export default function Dogs({ dogs, logs = [], healthEvents = [], onAddDog, onU
           <h2>Dogs</h2>
         </div>
         <div className="button-row">
+          <button className={showArchived ? "secondary" : "ghost"} onClick={() => { setShowArchived((value) => !value); setSelectedDogId(""); }}>
+            {showArchived ? "Show active dogs" : `Archived dogs (${dogs.filter((dog) => dog.archived).length})`}
+          </button>
           <button className="secondary" onClick={() => downloadCsv("dogs.csv", dogs, dogHeaders)}>Export Dogs CSV</button>
           <button className="primary" onClick={() => { setEditingDog(null); setShowAddForm(true); }}><span aria-hidden="true">+</span> Add Dog</button>
         </div>
@@ -70,6 +75,7 @@ export default function Dogs({ dogs, logs = [], healthEvents = [], onAddDog, onU
           healthEvents={healthEvents.filter((event) => event.dogId === selectedDog.id)}
           onClose={() => setSelectedDogId("")}
           onEdit={() => { setEditingDog(selectedDog); setShowAddForm(false); }}
+          onSetArchived={() => { onSetArchived?.(selectedDog.id, !selectedDog.archived); setSelectedDogId(""); }}
           onAddHealthEvent={onAddHealthEvent}
         />
       )}
@@ -129,6 +135,7 @@ export default function Dogs({ dogs, logs = [], healthEvents = [], onAddDog, onU
               <div className="button-row">
                 <button className="secondary" onClick={() => setSelectedDogId(dog.id)}>View profile</button>
                 <button className="ghost" onClick={() => setEditingDog(dog)}>Edit dog</button>
+                <button className={dog.archived ? "ghost" : "ghost danger-text"} onClick={() => onSetArchived?.(dog.id, !dog.archived)}>{dog.archived ? "Restore" : "Archive"}</button>
               </div>
             </article>
           ))}
@@ -138,7 +145,7 @@ export default function Dogs({ dogs, logs = [], healthEvents = [], onAddDog, onU
   );
 }
 
-function DogProfile({ dog, logs, healthEvents, onClose, onEdit, onAddHealthEvent }) {
+function DogProfile({ dog, logs, healthEvents, onClose, onEdit, onSetArchived, onAddHealthEvent }) {
   const sortedLogs = [...logs].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
   const sortedHealth = [...healthEvents].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
   const last10 = sortedLogs.slice(0, 10);
@@ -258,6 +265,7 @@ function DogProfile({ dog, logs, healthEvents, onClose, onEdit, onAddHealthEvent
         <div className="button-row">
           <button className="secondary" onClick={() => setShowHealthForm((value) => !value)}>Add health note</button>
           <button className="secondary" onClick={onEdit}>Edit dog</button>
+          <button className={dog.archived ? "secondary" : "ghost danger-text"} onClick={onSetArchived}>{dog.archived ? "Restore dog" : "Archive dog"}</button>
           <button className="ghost" onClick={onClose}>Close</button>
         </div>
       </div>

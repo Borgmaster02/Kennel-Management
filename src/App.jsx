@@ -58,6 +58,7 @@ export default function App() {
     () => calculateAllDogStats(state.dogs, state.trainingLog),
     [state.dogs, state.trainingLog]
   );
+  const activeDogsWithStats = useMemo(() => dogsWithStats.filter((dog) => !dog.archived), [dogsWithStats]);
 
   const editingSession = editingTrainingId
     ? state.trainingSessions.find((session) => session.id === editingTrainingId) || null
@@ -90,6 +91,16 @@ export default function App() {
   const addDog = (dog) => {
     setState((current) => ({ ...current, dogs: [...current.dogs, dog] }));
     setToast("New dog added.");
+  };
+
+  const setDogArchived = (dogId, archived) => {
+    setState((current) => ({
+      ...current,
+      dogs: current.dogs.map((dog) => dog.id === dogId
+        ? { ...dog, archived, archivedAt: archived ? new Date().toISOString() : "", updatedAt: new Date().toISOString() }
+        : dog),
+    }));
+    setToast(archived ? "Dog archived. Training history was kept." : "Dog restored.");
   };
 
   const saveTraining = ({ session, logEntries, quickMeta }) => {
@@ -394,10 +405,10 @@ export default function App() {
         </nav>
 
         <main className="main-content">
-          {activeTab === "dashboard" && <Dashboard dogs={state.dogs} sessions={state.trainingSessions} logs={state.trainingLog} healthEvents={state.healthEvents || []} meta={state.meta || {}} />}
+          {activeTab === "dashboard" && <Dashboard dogs={activeDogsWithStats} sessions={state.trainingSessions} logs={state.trainingLog} healthEvents={state.healthEvents || []} meta={state.meta || {}} />}
           {activeTab === "quick-training" && (
             <QuickTraining
-              dogs={dogsWithStats}
+              dogs={activeDogsWithStats}
               routes={state.routes}
               guides={state.guides || []}
               fixedTeams={state.fixedTeams || []}
@@ -421,9 +432,9 @@ export default function App() {
               onCancelEdit={cancelEditTraining}
             />
           )}
-          {activeTab === "dogs" && <Dogs dogs={dogsWithStats} logs={state.trainingLog} healthEvents={state.healthEvents || []} onAddDog={addDog} onUpdateDog={updateDog} onAddHealthEvent={addHealthEvent} />}
-          {activeTab === "team-planner" && <TeamPlanner dogs={dogsWithStats} onStartTraining={() => openTab("new-training")} onStartTrainingWithTeam={startTrainingWithTeam} onSaveFixedTeam={addFixedTeam} />}
-          {activeTab === "fixed-teams" && <FixedTeams teams={state.fixedTeams || []} dogs={dogsWithStats} onAddTeam={addFixedTeam} onUpdateTeam={updateFixedTeam} onDeleteTeam={deleteFixedTeam} onDuplicateTeam={duplicateFixedTeam} />}
+          {activeTab === "dogs" && <Dogs dogs={dogsWithStats} logs={state.trainingLog} healthEvents={state.healthEvents || []} onAddDog={addDog} onUpdateDog={updateDog} onSetArchived={setDogArchived} onAddHealthEvent={addHealthEvent} />}
+          {activeTab === "team-planner" && <TeamPlanner dogs={activeDogsWithStats} onStartTraining={() => openTab("new-training")} onStartTrainingWithTeam={startTrainingWithTeam} onSaveFixedTeam={addFixedTeam} />}
+          {activeTab === "fixed-teams" && <FixedTeams teams={state.fixedTeams || []} dogs={activeDogsWithStats} onAddTeam={addFixedTeam} onUpdateTeam={updateFixedTeam} onDeleteTeam={deleteFixedTeam} onDuplicateTeam={duplicateFixedTeam} />}
           {activeTab === "health" && <HealthNotes dogs={state.dogs} healthEvents={state.healthEvents || []} onAddEvent={addHealthEvent} onAddEvents={addHealthEvents} onUpdateEvent={updateHealthEvent} onDeleteEvent={deleteHealthEvent} />}
           {activeTab === "sessions" && <TrainingSessions sessions={state.trainingSessions} onDeleteTraining={deleteTraining} onEditTraining={startEditTraining} onCreateTeamFromTraining={createFixedTeamFromSession} />}
           {activeTab === "log" && <TrainingLog logs={state.trainingLog} dogs={state.dogs} sessions={state.trainingSessions} />}

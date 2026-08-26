@@ -90,8 +90,8 @@ export default function NewTraining({ dogs, routes, guides = [], fixedTeams = []
 
   const filteredDogs = useMemo(() => {
     const value = search.trim().toLowerCase();
-    return dogs.filter((dog) => !value || dog.name.toLowerCase().includes(value));
-  }, [dogs, search]);
+    return dogs.filter((dog) => (!dog.archived || selectedDogIds.includes(dog.id)) && (!value || dog.name.toLowerCase().includes(value)));
+  }, [dogs, search, selectedDogIds]);
 
   const selectedByPosition = useMemo(() => {
     return POSITIONS.map((position) => ({
@@ -185,7 +185,7 @@ export default function NewTraining({ dogs, routes, guides = [], fixedTeams = []
     const members = Array.isArray(team.members) ? team.members : [];
     const validMembers = members
       .map((member) => ({ ...member, dog: dogs.find((dog) => dog.id === member.dogId) }))
-      .filter((member) => member.dog);
+      .filter((member) => member.dog && !member.dog.archived);
 
     setSelectedDogIds(validMembers.map((member) => member.dog.id));
     setDogReviews(() => {
@@ -274,7 +274,7 @@ export default function NewTraining({ dogs, routes, guides = [], fixedTeams = []
     }
     const members = (team.members || [])
       .map((member) => ({ ...member, dog: dogs.find((dog) => dog.id === member.dogId) }))
-      .filter((member) => member.dog);
+      .filter((member) => member.dog && !member.dog.archived);
     if (!members.length) {
       alert("This fixed team has no valid dogs.");
       return;

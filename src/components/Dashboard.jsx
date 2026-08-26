@@ -1,9 +1,15 @@
+import { useMemo, useState } from "react";
 import { getDashboardStats } from "../utils/statistics";
 import { formatDate } from "../utils/dateUtils";
 import { StatusBadge, StatCard, EmptyState } from "./common";
 
 export default function Dashboard({ dogs, sessions, logs, healthEvents = [], meta = {} }) {
-  const stats = getDashboardStats(dogs, sessions, logs, healthEvents, meta);
+  const stats = useMemo(() => getDashboardStats(dogs, sessions, logs, healthEvents, meta), [dogs, sessions, logs, healthEvents, meta]);
+  const [kmSort, setKmSort] = useState("asc");
+  const dogsByKm = useMemo(() => [...stats.dogsWithStats].sort((a, b) => {
+    const difference = Number(a.stats.seasonKm || 0) - Number(b.stats.seasonKm || 0);
+    return kmSort === "asc" ? difference : -difference;
+  }), [stats.dogsWithStats, kmSort]);
 
   return (
     <section className="page-grid">
@@ -33,27 +39,41 @@ export default function Dashboard({ dogs, sessions, logs, healthEvents = [], met
         <StatCard label="Average dogs / session" value={stats.averageDogsPerSession.toFixed(1)} />
       </div>
 
-      <div className="two-column">
-        <Panel title="Recent workload split">
-          <div className="stats-grid compact-stats">
-            <article className="stat-card"><span>Last 7 days dog workload</span><strong>{stats.last7DogWorkloadKm.toFixed(1)} km</strong></article>
-            <article className="stat-card"><span>Last 30 days dog workload</span><strong>{stats.last30DogWorkloadKm.toFixed(1)} km</strong></article>
+      <Panel title="Recent workload split">
+        <div className="stats-grid compact-stats">
+          <article className="stat-card"><span>Last 7 days dog workload</span><strong>{stats.last7DogWorkloadKm.toFixed(1)} km</strong></article>
+          <article className="stat-card"><span>Last 30 days dog workload</span><strong>{stats.last30DogWorkloadKm.toFixed(1)} km</strong></article>
+        </div>
+        <p className="muted-text">Training km counts the route once. Dog workload km counts every dog in the team and is better for individual workload.</p>
+      </Panel>
+
+      <Panel title="All dogs by season km">
+        <div className="ranking-toolbar">
+          <p className="muted-text">All {dogsByKm.length} dogs are shown.</p>
+          <button className="secondary" onClick={() => setKmSort((current) => current === "asc" ? "desc" : "asc")}>
+            Kilometers: {kmSort === "asc" ? "lowest first ↑" : "highest first ↓"}
+          </button>
+        </div>
+        {dogsByKm.length ? (
+          <div className="responsive-table-wrap">
+            <table className="dog-km-table">
+              <thead><tr><th>#</th><th>Dog</th><th>Season km</th><th>Runs</th><th>Last training</th><th>Status</th></tr></thead>
+              <tbody>
+                {dogsByKm.map((dog, index) => (
+                  <tr key={dog.id}>
+                    <td>{index + 1}</td>
+                    <td><strong>{dog.name}</strong><small>{dog.stats.mostUsedPosition || dog.mainPosition || dog.sex}</small></td>
+                    <td><strong>{dog.stats.seasonKm.toFixed(1)} km</strong></td>
+                    <td>{dog.stats.numberOfRuns}</td>
+                    <td>{dog.stats.lastTraining ? `${formatDate(dog.stats.lastTraining.date)} · ${dog.stats.lastTraining.distance} km` : "—"}</td>
+                    <td><StatusBadge value={dog.healthStatus} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <p className="muted-text">Training km counts the route once. Dog workload km counts every dog in the team and is better for individual workload.</p>
-        </Panel>
-
-        <Panel title="Top 10 dogs by season km">
-          {stats.topDogs.length ? (
-            <CompactDogList dogs={stats.topDogs} mode="km" />
-          ) : (
-            <EmptyState title="No trainings yet" text="Save the first training to start the ranking." />
-          )}
-        </Panel>
-
-        <Panel title="Dogs with lowest km">
-          <CompactDogList dogs={stats.lowKmDogs} mode="km" />
-        </Panel>
-      </div>
+        ) : <EmptyState title="No dogs yet" text="Add dogs to see the kilometer ranking." />}
+      </Panel>
 
       <div className="two-column">
         <Panel title="Dogs not trained for a long time">
