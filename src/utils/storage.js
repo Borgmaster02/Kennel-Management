@@ -3,7 +3,7 @@ import { DEFAULT_GUIDES, INITIAL_ROUTES } from "../data/options.js";
 
 export const STORAGE_KEY = "dog-training-tracker-data";
 export const LEGACY_STORAGE_KEYS = ["dog-training-tracker-v1"];
-export const DATA_VERSION = 14;
+export const DATA_VERSION = 15;
 
 export const defaultState = {
   dataVersion: DATA_VERSION,
@@ -26,7 +26,7 @@ function cleanArray(value, fallback = []) {
 }
 
 function normalizeDog(dog, index) {
-  const name = String(dog?.name || dog?.dogName || `Dog ${index + 1}`).trim();
+  const name = String(dog?.name || dog?.dogName || `Dog ${index + 1}`).trim().toLocaleUpperCase();
   return {
     id: dog?.id || `dog-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${index}`,
     name,
@@ -70,7 +70,7 @@ function normalizeHealthEvent(event, index) {
   return {
     id: event?.id || `health-${Date.now()}-${index}`,
     dogId,
-    dogName: event?.dogName || "",
+    dogName: String(event?.dogName || "").trim().toLocaleUpperCase(),
     sex: event?.sex || "",
     date: event?.date || new Date().toISOString().slice(0, 10),
     type: event?.type || "Health Note",
@@ -108,7 +108,7 @@ function normalizeLog(log, index) {
     trainingId,
     date: log?.date || new Date().toISOString().slice(0, 10),
     dogId: log?.dogId || "",
-    dogName: log?.dogName || "",
+    dogName: String(log?.dogName || "").trim().toLocaleUpperCase(),
     sex: log?.sex || "",
     route: log?.route || "Open distance",
     distance: Number(log?.distance || 0),

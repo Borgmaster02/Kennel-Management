@@ -1,5 +1,6 @@
-import { downloadCsv, downloadExcelWorkbook, dogHeaders, fixedTeamHeaders, healthHeaders, logHeaders, sessionHeaders } from "../utils/exportCsv";
+import { downloadCsv, dogHeaders, fixedTeamHeaders, healthHeaders, logHeaders, sessionHeaders } from "../utils/exportCsv";
 import { downloadJson, readJsonFile, validateImportedState } from "../utils/backup";
+import { downloadBeautifulExcel } from "../utils/exportExcel";
 
 export default function DataManagement({ state, onRestoreState, onResetAllData, onBackupDownloaded, onExcelExported }) {
   const today = new Date().toISOString().slice(0, 10);
@@ -31,15 +32,14 @@ export default function DataManagement({ state, onRestoreState, onResetAllData, 
     onBackupDownloaded?.();
   };
 
-  const downloadWorkbook = () => {
-    downloadExcelWorkbook(`dog-training-tracker-workbook-${today}.xls`, [
-      { name: "Dogs", rows: state.dogs || [], headers: dogHeaders },
-      { name: "Training Sessions", rows: state.trainingSessions || [], headers: sessionHeaders },
-      { name: "Training Log", rows: preparedLogs, headers: logHeaders },
-      { name: "Fixed Teams", rows: preparedTeams, headers: fixedTeamHeaders },
-      { name: "Health Notes", rows: preparedHealth, headers: healthHeaders },
-    ]);
-    onExcelExported?.();
+  const downloadWorkbook = async () => {
+    try {
+      await downloadBeautifulExcel(`kennel-training-report-${today}.xlsx`, state);
+      onExcelExported?.();
+    } catch (error) {
+      console.error("Could not create Excel workbook.", error);
+      alert("The Excel workbook could not be created. Please try again.");
+    }
   };
 
   return (
@@ -63,9 +63,9 @@ export default function DataManagement({ state, onRestoreState, onResetAllData, 
       <div className="two-column">
         <section className="panel">
           <h3>Excel-friendly exports</h3>
-          <p className="muted-text">CSV files are clean table exports. The workbook export is an Excel-openable .xls file with several tables in one file.</p>
+          <p className="muted-text">Download a polished offline workbook with an overview, live workload formulas, rankings and an Enter Training sheet with dog dropdowns.</p>
           <div className="button-stack">
-            <button className="primary" onClick={downloadWorkbook}>Export Excel-style Workbook</button>
+            <button className="primary" onClick={downloadWorkbook}>Download formatted Excel workbook</button>
             <button className="secondary" onClick={() => downloadCsv(`dogs-${today}.csv`, state.dogs, dogHeaders)}>Export Dogs CSV</button>
             <button className="secondary" onClick={() => downloadCsv(`training-sessions-${today}.csv`, state.trainingSessions, sessionHeaders)}>Export Training Sessions CSV</button>
             <button className="secondary" onClick={() => downloadCsv(`training-log-${today}.csv`, preparedLogs, logHeaders)}>Export Training Log CSV</button>

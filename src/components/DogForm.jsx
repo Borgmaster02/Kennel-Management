@@ -25,7 +25,7 @@ export default function DogForm({ dog, onSave, onCancel }) {
     onSave({
       ...form,
       id: form.id || `dog-${Date.now()}-${form.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-      name: form.name.trim(),
+      name: form.name.trim().toLocaleUpperCase(),
       createdAt: form.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
