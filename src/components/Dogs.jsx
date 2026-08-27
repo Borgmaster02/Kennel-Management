@@ -81,7 +81,7 @@ export default function Dogs({ dogs, logs = [], healthEvents = [], onAddDog, onU
       )}
 
       {(showAddForm || editingDog) && (
-        <DogForm dog={editingDog} onSave={saveDog} onCancel={() => { setShowAddForm(false); setEditingDog(null); }} />
+        <DogForm key={editingDog?.id || "new-dog"} dog={editingDog} onSave={saveDog} onCancel={() => { setShowAddForm(false); setEditingDog(null); }} />
       )}
 
       <div className="quick-filter-row">

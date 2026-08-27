@@ -3,6 +3,7 @@ import { POSITIONS, TRAINING_TYPES, FORM_LABELS } from "../data/options";
 import { todayIso } from "../utils/dateUtils";
 import { StatusBadge } from "./common";
 import { getSuggestedTeam, isDogEligibleForTeam } from "../utils/teamSuggestion";
+import { makeTrainingId } from "../utils/ids";
 
 const RESTRICTED_STATUSES = ["Rest", "Injured", "Sick", "In Heat", "Retired"];
 
@@ -54,16 +55,6 @@ export default function NewTraining({ dogs, routes, guides = [], fixedTeams = []
   const [reviewIndex, setReviewIndex] = useState(0);
 
   useEffect(() => {
-    setStep(1);
-    setBasics(basicsFromSession(editSession));
-    setSelectedDogIds(editLogs.map((log) => log.dogId).filter(Boolean));
-    setDogReviews(reviewsFromLogs(editLogs, editSession?.distance || ""));
-    setSelectedTeamId(editSession?.fixedTeamId || "");
-    setSearch("");
-    setReviewIndex(0);
-  }, [editSession?.id]);
-
-  useEffect(() => {
     if (isEditing || !initialTeam?.members?.length) return;
     const validMembers = initialTeam.members
       .map((member) => ({ ...member, dog: dogs.find((dog) => dog.id === member.dogId) }))
@@ -81,7 +72,9 @@ export default function NewTraining({ dogs, routes, guides = [], fixedTeams = []
     });
     setReviewIndex(0);
     onInitialTeamUsed?.();
-  }, [initialTeam?.id, isEditing, dogs]);
+  // This effect consumes a one-time team prefill. Re-running it for form changes would reset the user's selection.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTeam?.id]);
 
   const selectedDogs = useMemo(
     () => selectedDogIds.map((id) => dogs.find((dog) => dog.id === id)).filter(Boolean),
@@ -281,7 +274,7 @@ export default function NewTraining({ dogs, routes, guides = [], fixedTeams = []
     }
     const confirmed = window.confirm(`Quick save ${team.name} with ${members.length} dogs? You can edit the training later if needed.`);
     if (!confirmed) return;
-    const trainingId = `TR-${new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14)}`;
+    const trainingId = makeTrainingId();
     const timestamp = new Date().toISOString();
     const session = {
       id: trainingId,
@@ -333,7 +326,7 @@ export default function NewTraining({ dogs, routes, guides = [], fixedTeams = []
   const save = () => {
     const confirmed = window.confirm(`${isEditing ? "Update" : "Save"} this training with ${selectedDogs.length} dogs?`);
     if (!confirmed) return;
-    const trainingId = editSession?.id || `TR-${new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14)}`;
+    const trainingId = editSession?.id || makeTrainingId();
     const timestamp = new Date().toISOString();
     const session = {
       id: trainingId,
@@ -496,7 +489,7 @@ export default function NewTraining({ dogs, routes, guides = [], fixedTeams = []
                     onClick={() => setSelectedTeamId(team.id)}
                   >
                     <strong>{team.name}</strong>
-                    <span>{team.category || "Custom"} · {(team.members || []).length} dogs</span>
+                    <span>{team.category || "Custom"} · {(team.members || []).filter((member) => dogs.some((dog) => dog.id === member.dogId && !dog.archived)).length} active dogs</span>
                     {team.notes && <small>{team.notes}</small>}
                   </button>
                 ))}
@@ -517,7 +510,7 @@ export default function NewTraining({ dogs, routes, guides = [], fixedTeams = []
             <label className="fixed-team-select">Fixed team template
               <select value={selectedTeamId} onChange={(event) => applyFixedTeam(event.target.value)}>
                 <option value="">No fixed team selected</option>
-                {fixedTeams.map((team) => <option key={team.id} value={team.id}>{team.name} · {(team.members || []).length} dogs</option>)}
+                {fixedTeams.map((team) => <option key={team.id} value={team.id}>{team.name} · {(team.members || []).filter((member) => dogs.some((dog) => dog.id === member.dogId && !dog.archived)).length} active dogs</option>)}
               </select>
             </label>
           )}

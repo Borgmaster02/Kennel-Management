@@ -420,6 +420,7 @@ export default function App() {
           )}
           {activeTab === "new-training" && (
             <NewTraining
+              key={editingSession?.id || "new-training"}
               dogs={dogsWithStats}
               routes={state.routes}
               guides={state.guides || []}

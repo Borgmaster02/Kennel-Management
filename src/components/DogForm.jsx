@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { HEALTH_STATUSES, POSITIONS, TRAINING_STATUSES } from "../data/options";
 
 const emptyDog = {
@@ -16,10 +16,6 @@ const emptyDog = {
 
 export default function DogForm({ dog, onSave, onCancel }) {
   const [form, setForm] = useState(dog || emptyDog);
-
-  useEffect(() => {
-    setForm(dog || emptyDog);
-  }, [dog]);
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 

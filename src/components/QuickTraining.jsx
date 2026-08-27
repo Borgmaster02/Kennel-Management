@@ -2,12 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { TRAINING_TYPES } from "../data/options";
 import { todayIso } from "../utils/dateUtils";
 import { EmptyState, StatusBadge } from "./common";
+import { makeTrainingId } from "../utils/ids";
 
 const QUICK_KM = [3, 5, 8, 10, 12, 15, 20, 25];
-
-function makeTrainingId() {
-  return `TR-${new Date().toISOString().replace(/[-:T.Z]/g, "").slice(0, 14)}`;
-}
 
 export default function QuickTraining({ dogs, routes = [], guides = [], fixedTeams = [], lastQuickTraining = null, backupStatus = null, onSave, onOpenFullTraining }) {
   const [date, setDate] = useState(todayIso());
@@ -249,7 +246,7 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
               {fixedTeams.map((team) => (
                 <button key={team.id} className={teamId === team.id ? "selection-card selected" : "selection-card"} onClick={() => { setTeamId(team.id); setStep("guide"); }}>
                   <strong>{team.name}</strong>
-                  <small>{team.category || "Custom"} · {(team.members || []).length} dogs</small>
+                  <small>{team.category || "Custom"} · {(team.members || []).filter((member) => dogs.some((dog) => dog.id === member.dogId)).length} active dogs</small>
                   <span className="muted-text">{(team.members || []).slice(0, 6).map((member) => dogs.find((dog) => dog.id === member.dogId)?.name).filter(Boolean).join(", ")}</span>
                 </button>
               ))}

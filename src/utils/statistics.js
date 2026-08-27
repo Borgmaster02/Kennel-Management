@@ -1,4 +1,4 @@
-import { daysBetween } from "./dateUtils";
+import { daysBetween } from "./dateUtils.js";
 
 export function sortLogsNewestFirst(logs) {
   return [...logs].sort((a, b) => {

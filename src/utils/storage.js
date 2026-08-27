@@ -1,5 +1,5 @@
-import { initialDogs } from "../data/initialDogs";
-import { DEFAULT_GUIDES, INITIAL_ROUTES } from "../data/options";
+import { initialDogs } from "../data/initialDogs.js";
+import { DEFAULT_GUIDES, INITIAL_ROUTES } from "../data/options.js";
 
 export const STORAGE_KEY = "dog-training-tracker-data";
 export const LEGACY_STORAGE_KEYS = ["dog-training-tracker-v1"];
