@@ -4,7 +4,7 @@ import { formatDate } from "../utils/dateUtils";
 import { downloadCsv, sessionHeaders } from "../utils/exportCsv";
 import { TRAINING_TYPES } from "../data/options";
 
-export default function TrainingSessions({ sessions = [], onDeleteTraining, onEditTraining, onCreateTeamFromTraining }) {
+export default function TrainingSessions({ sessions = [], logs = [], onDeleteTraining, onEditTraining, onCreateTeamFromTraining }) {
   const [query, setQuery] = useState("");
   const [guideFilter, setGuideFilter] = useState("All");
   const [routeFilter, setRouteFilter] = useState("All");
@@ -12,6 +12,17 @@ export default function TrainingSessions({ sessions = [], onDeleteTraining, onEd
   const [fixedTeamFilter, setFixedTeamFilter] = useState("All");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
+  const teamByTraining = useMemo(() => {
+    const grouped = new Map();
+    logs.forEach((log) => {
+      if (!log.trainingId) return;
+      const team = grouped.get(log.trainingId) || [];
+      team.push(log);
+      grouped.set(log.trainingId, team);
+    });
+    return grouped;
+  }, [logs]);
 
   const options = useMemo(() => {
     const unique = (values) => Array.from(new Set(values.filter(Boolean))).sort((a, b) => String(a).localeCompare(String(b)));
@@ -25,7 +36,8 @@ export default function TrainingSessions({ sessions = [], onDeleteTraining, onEd
   const filteredSessions = useMemo(() => {
     const search = query.trim().toLowerCase();
     return sessions.filter((session) => {
-      const matchesSearch = !search || [session.id, session.date, session.route, session.guide, session.trainingType, session.fixedTeamName, session.generalNote]
+      const teamNames = (teamByTraining.get(session.id) || []).map((log) => log.dogName).join(" ");
+      const matchesSearch = !search || [session.id, session.date, session.route, session.guide, session.trainingType, session.fixedTeamName, session.generalNote, teamNames]
         .some((value) => String(value || "").toLowerCase().includes(search));
       const matchesGuide = guideFilter === "All" || session.guide === guideFilter;
       const matchesRoute = routeFilter === "All" || session.route === routeFilter;
@@ -35,7 +47,7 @@ export default function TrainingSessions({ sessions = [], onDeleteTraining, onEd
       const matchesTo = !dateTo || String(session.date || "") <= dateTo;
       return matchesSearch && matchesGuide && matchesRoute && matchesType && matchesFixedTeam && matchesFrom && matchesTo;
     });
-  }, [sessions, query, guideFilter, routeFilter, typeFilter, fixedTeamFilter, dateFrom, dateTo]);
+  }, [sessions, teamByTraining, query, guideFilter, routeFilter, typeFilter, fixedTeamFilter, dateFrom, dateTo]);
 
   const resetFilters = () => {
     setQuery("");
@@ -89,7 +101,9 @@ export default function TrainingSessions({ sessions = [], onDeleteTraining, onEd
               </tr>
             </thead>
             <tbody>
-              {filteredSessions.map((session) => (
+              {filteredSessions.map((session) => {
+                const team = teamByTraining.get(session.id) || [];
+                return (
                 <tr key={session.id}>
                   <td>{session.id}</td>
                   <td>{formatDate(session.date)}</td>
@@ -98,7 +112,19 @@ export default function TrainingSessions({ sessions = [], onDeleteTraining, onEd
                   <td>{session.trainingType}</td>
                   <td>{session.guide}</td>
                   <td>{session.fixedTeamName || "—"}</td>
-                  <td>{session.numberOfDogs}</td>
+                  <td>
+                    <details className="session-team-preview">
+                      <summary>{session.numberOfDogs || team.length} dogs</summary>
+                      <div className="session-team-list">
+                        {team.length ? team.map((log) => (
+                          <span className="session-team-dog" key={log.id}>
+                            <strong>{log.dogName}</strong>
+                            <small>{log.position || "Team"}</small>
+                          </span>
+                        )) : <span className="muted-text">No individual dog data available.</span>}
+                      </div>
+                    </details>
+                  </td>
                   <td>{session.generalNote || "—"}</td>
                   <td>
                     <div className="table-actions">
@@ -108,7 +134,7 @@ export default function TrainingSessions({ sessions = [], onDeleteTraining, onEd
                     </div>
                   </td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
         </div>

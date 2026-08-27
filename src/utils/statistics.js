@@ -101,8 +101,10 @@ function countUniqueWeeks(sessions) {
 }
 
 export function getDashboardStats(dogs, sessions, logs, healthEvents = [], meta = {}) {
-  const dogsWithStats = calculateAllDogStats(dogs, logs);
-  const totalDogWorkloadKm = logs.reduce((sum, log) => sum + Number(log.distance || 0), 0);
+  const activeDogIds = new Set(dogs.map((dog) => dog.id));
+  const activeLogs = logs.filter((log) => activeDogIds.has(log.dogId));
+  const dogsWithStats = calculateAllDogStats(dogs, activeLogs);
+  const totalDogWorkloadKm = activeLogs.reduce((sum, log) => sum + Number(log.distance || 0), 0);
   const totalTrainingKm = sessions.reduce((sum, session) => sum + Number(session.distance || 0), 0);
   const averageKmPerDog = dogs.length ? totalDogWorkloadKm / dogs.length : 0;
   const averageTrainingKm = sessions.length ? totalTrainingKm / sessions.length : 0;
@@ -119,10 +121,15 @@ export function getDashboardStats(dogs, sessions, logs, healthEvents = [], meta 
   const uniqueTrainingWeeks = countUniqueWeeks(sessions);
   const last7TrainingKm = sessions.filter((session) => isWithinDays(session.date, 7)).reduce((sum, session) => sum + Number(session.distance || 0), 0);
   const last30TrainingKm = sessions.filter((session) => isWithinDays(session.date, 30)).reduce((sum, session) => sum + Number(session.distance || 0), 0);
-  const last7DogWorkloadKm = logs.filter((log) => isWithinDays(log.date, 7)).reduce((sum, log) => sum + Number(log.distance || 0), 0);
-  const last30DogWorkloadKm = logs.filter((log) => isWithinDays(log.date, 30)).reduce((sum, log) => sum + Number(log.distance || 0), 0);
+  const last7Logs = activeLogs.filter((log) => isWithinDays(log.date, 7));
+  const last30Logs = activeLogs.filter((log) => isWithinDays(log.date, 30));
+  const last7DogWorkloadKm = last7Logs.reduce((sum, log) => sum + Number(log.distance || 0), 0);
+  const last30DogWorkloadKm = last30Logs.reduce((sum, log) => sum + Number(log.distance || 0), 0);
+  const dogsTrainedLast7 = new Set(last7Logs.map((log) => log.dogId)).size;
+  const dogsTrainedLast30 = new Set(last30Logs.map((log) => log.dogId)).size;
+  const dogsNeedingTraining = notTrainedLong.filter((dog) => !["Rest", "Injured", "Sick", "In Heat", "Retired"].includes(dog.healthStatus)).length;
   const averageDogsPerSession = sessions.length ? logs.length / sessions.length : 0;
-  const preparedHealthEvents = enrichHealthEvents(healthEvents, dogs);
+  const preparedHealthEvents = enrichHealthEvents(healthEvents.filter((event) => activeDogIds.has(event.dogId)), dogs);
   const recentHealthEvents = preparedHealthEvents
     .filter((event) => isWithinDays(event.date, 7))
     .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
@@ -148,6 +155,10 @@ export function getDashboardStats(dogs, sessions, logs, healthEvents = [], meta 
     last7DogWorkloadKm,
     last30DogWorkloadKm,
     averageDogsPerSession,
+    activeDogCount: dogs.length,
+    dogsTrainedLast7,
+    dogsTrainedLast30,
+    dogsNeedingTraining,
     recentHealthEvents,
     upcomingHealthChecks,
     sessionsSinceBackup,

@@ -435,8 +435,8 @@ export default function App() {
           {activeTab === "dogs" && <Dogs dogs={dogsWithStats} logs={state.trainingLog} healthEvents={state.healthEvents || []} onAddDog={addDog} onUpdateDog={updateDog} onSetArchived={setDogArchived} onAddHealthEvent={addHealthEvent} />}
           {activeTab === "team-planner" && <TeamPlanner dogs={activeDogsWithStats} onStartTraining={() => openTab("new-training")} onStartTrainingWithTeam={startTrainingWithTeam} onSaveFixedTeam={addFixedTeam} />}
           {activeTab === "fixed-teams" && <FixedTeams teams={state.fixedTeams || []} dogs={activeDogsWithStats} onAddTeam={addFixedTeam} onUpdateTeam={updateFixedTeam} onDeleteTeam={deleteFixedTeam} onDuplicateTeam={duplicateFixedTeam} />}
-          {activeTab === "health" && <HealthNotes dogs={state.dogs} healthEvents={state.healthEvents || []} onAddEvent={addHealthEvent} onAddEvents={addHealthEvents} onUpdateEvent={updateHealthEvent} onDeleteEvent={deleteHealthEvent} />}
-          {activeTab === "sessions" && <TrainingSessions sessions={state.trainingSessions} onDeleteTraining={deleteTraining} onEditTraining={startEditTraining} onCreateTeamFromTraining={createFixedTeamFromSession} />}
+          {activeTab === "health" && <HealthNotes dogs={activeDogsWithStats} healthEvents={state.healthEvents || []} onAddEvent={addHealthEvent} onAddEvents={addHealthEvents} onUpdateEvent={updateHealthEvent} onDeleteEvent={deleteHealthEvent} />}
+          {activeTab === "sessions" && <TrainingSessions sessions={state.trainingSessions} logs={state.trainingLog} onDeleteTraining={deleteTraining} onEditTraining={startEditTraining} onCreateTeamFromTraining={createFixedTeamFromSession} />}
           {activeTab === "log" && <TrainingLog logs={state.trainingLog} dogs={state.dogs} sessions={state.trainingSessions} />}
           {activeTab === "routes" && <Routes routes={state.routes} onAddRoute={addRoute} onUpdateRoute={updateRoute} onDeleteRoute={deleteRoute} />}
           {activeTab === "guides" && <Guides guides={state.guides || []} onAddGuide={addGuide} onUpdateGuide={updateGuide} onDeleteGuide={deleteGuide} />}

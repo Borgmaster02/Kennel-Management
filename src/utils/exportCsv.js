@@ -34,6 +34,8 @@ export const dogHeaders = [
   { key: "healthStatus", label: "Health Status" },
   { key: "form", label: "Form" },
   { key: "lastHeat", label: "Last Heat" },
+  { key: "archived", label: "Archived" },
+  { key: "archivedAt", label: "Archived At" },
   { key: "notes", label: "Notes" },
 ];
 

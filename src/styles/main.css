@@ -850,6 +850,11 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .compact-selection {
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
 }
+.session-team-preview { min-width: 150px; }
+.session-team-preview summary { cursor: pointer; color: var(--primary); font-weight: 800; white-space: nowrap; }
+.session-team-list { display: grid; grid-template-columns: repeat(2, minmax(110px, 1fr)); gap: 0.4rem; margin-top: 0.55rem; padding: 0.55rem; min-width: 270px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); }
+.session-team-dog { display: grid; padding: 0.35rem 0.5rem; border-radius: 9px; background: var(--surface); }
+.session-team-dog small { color: var(--muted); }
 .team-mode-switch { display: flex; gap: 0.55rem; margin: 0.8rem 0 1rem; }
 .individual-dog-picker { display: grid; gap: 0.8rem; }
 .individual-picker-head, .quick-dog-card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }

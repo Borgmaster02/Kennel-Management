@@ -78,7 +78,7 @@ export default function HealthNotes({ dogs = [], healthEvents = [], onAddEvent, 
     setBatchDraft({ date: todayIso(), note: "Deworming given today.", nextCheck: "", selectedDogIds: [] });
   };
 
-  const preparedEvents = useMemo(() => healthEvents.map((event) => {
+  const preparedEvents = useMemo(() => healthEvents.filter((event) => dogMap.has(event.dogId)).map((event) => {
     const dog = dogMap.get(event.dogId);
     return {
       ...event,

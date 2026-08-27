@@ -29,14 +29,14 @@ export default function Dashboard({ dogs, sessions, logs, healthEvents = [], met
       )}
 
       <div className="stats-grid">
-        <StatCard label="Training km" value={`${stats.totalTrainingKm.toFixed(1)} km`} hint="Route/team kilometers, counted once per session" />
-        <StatCard label="Training sessions" value={stats.numberOfTrainingSessions} />
-        <StatCard label="Dog workload km" value={`${stats.totalDogWorkloadKm.toFixed(1)} km`} hint="All dog log kilometers combined" />
-        <StatCard label="Average km / session" value={`${stats.averageTrainingKm.toFixed(1)} km`} />
-        <StatCard label="Last 7 days training km" value={`${stats.last7TrainingKm.toFixed(1)} km`} hint="Route/team kilometers in the last 7 days" />
-        <StatCard label="Last 30 days training km" value={`${stats.last30TrainingKm.toFixed(1)} km`} hint="Route/team kilometers in the last 30 days" />
-        <StatCard label="Training frequency" value={`${stats.trainingFrequencyPerWeek.toFixed(1)} / week`} hint={`${stats.uniqueTrainingWeeks || 0} active training weeks`} />
-        <StatCard label="Average dogs / session" value={stats.averageDogsPerSession.toFixed(1)} />
+        <StatCard label="Active dogs" value={stats.activeDogCount} hint="Archived dogs are not counted" />
+        <StatCard label="Season workload" value={`${stats.totalDogWorkloadKm.toFixed(1)} km`} hint="Kilometers across all active dogs" />
+        <StatCard label="Average per dog" value={`${stats.averageKmPerDog.toFixed(1)} km`} hint="Season workload divided by active dogs" />
+        <StatCard label="Trained in last 7 days" value={`${stats.dogsTrainedLast7} / ${stats.activeDogCount}`} hint="Unique active dogs, independent of grouped sessions" />
+        <StatCard label="Trained in last 30 days" value={`${stats.dogsTrainedLast30} / ${stats.activeDogCount}`} hint="Unique active dogs, independent of grouped sessions" />
+        <StatCard label="Need training" value={stats.dogsNeedingTraining} hint="Eligible dogs with no run or 7+ days since last run" />
+        <StatCard label="Restricted dogs" value={stats.dogsOnRest.length} hint="Rest, injured, sick or in heat" />
+        <StatCard label="Last 7 days workload" value={`${stats.last7DogWorkloadKm.toFixed(1)} km`} hint="Dog kilometers, not number of session records" />
       </div>
 
       <Panel title="Recent workload split">
@@ -44,7 +44,7 @@ export default function Dashboard({ dogs, sessions, logs, healthEvents = [], met
           <article className="stat-card"><span>Last 7 days dog workload</span><strong>{stats.last7DogWorkloadKm.toFixed(1)} km</strong></article>
           <article className="stat-card"><span>Last 30 days dog workload</span><strong>{stats.last30DogWorkloadKm.toFixed(1)} km</strong></article>
         </div>
-        <p className="muted-text">Training km counts the route once. Dog workload km counts every dog in the team and is better for individual workload.</p>
+        <p className="muted-text">These totals use the individual dog records, so they remain useful when several trainings are entered together.</p>
       </Panel>
 
       <Panel title="All dogs by season km">

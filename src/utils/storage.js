@@ -3,7 +3,7 @@ import { DEFAULT_GUIDES, INITIAL_ROUTES } from "../data/options";
 
 export const STORAGE_KEY = "dog-training-tracker-data";
 export const LEGACY_STORAGE_KEYS = ["dog-training-tracker-v1"];
-export const DATA_VERSION = 13;
+export const DATA_VERSION = 14;
 
 export const defaultState = {
   dataVersion: DATA_VERSION,
@@ -39,6 +39,10 @@ function normalizeDog(dog, index) {
     form: Number(dog?.form || 3),
     lastHeat: dog?.lastHeat || "",
     notes: dog?.notes || "",
+    archived: Boolean(dog?.archived),
+    archivedAt: dog?.archivedAt || "",
+    createdAt: dog?.createdAt || "",
+    updatedAt: dog?.updatedAt || "",
   };
 }
 
