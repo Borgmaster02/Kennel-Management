@@ -3,7 +3,7 @@ import { DEFAULT_GUIDES, INITIAL_ROUTES } from "../data/options.js";
 
 export const STORAGE_KEY = "dog-training-tracker-data";
 export const LEGACY_STORAGE_KEYS = ["dog-training-tracker-v1"];
-export const DATA_VERSION = 15;
+export const DATA_VERSION = 16;
 
 export const defaultState = {
   dataVersion: DATA_VERSION,

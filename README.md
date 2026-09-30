@@ -70,3 +70,42 @@ Version 1 stores data in the browser localStorage. This is stable for first loca
 - Batch deworming creates one health note per selected dog, so each dog profile keeps its own history.
 - Dog Profile health notes can also use the Deworming type.
 - Local data migration was updated to data version 13 while keeping older JSON backups importable.
+
+## Shared Neon storage / Cloud Sync
+
+This version can use Neon Postgres as a shared database through the Vercel API route `api/sync.js`.
+
+### What it does
+
+- On page load, the app tries to load the shared kennel data from `/api/sync`.
+- When data changes, the app saves the merged state back to Neon.
+- Users can also open **Data → Cloud Sync → Sync now**.
+- Local browser storage stays as a fallback if the cloud API is unavailable.
+
+### Required Vercel environment variables
+
+Add these in Vercel under **Project Settings → Environment Variables**:
+
+```text
+DATABASE_URL=your Neon pooled or standard Postgres connection string
+```
+
+Optional:
+
+```text
+KENNEL_ACCESS_CODE=choose-a-simple-internal-code
+```
+
+If `KENNEL_ACCESS_CODE` is set, users must enter it under **Data → Cloud Sync** before syncing.
+
+### How to deploy
+
+1. Push the project to GitHub.
+2. Connect the GitHub repository to Vercel.
+3. Set the environment variables above.
+4. Deploy.
+5. Open the Vercel link in two different browsers and use **Data → Cloud Sync → Sync now**.
+
+### Important limitations
+
+This is shared-state sync, not yet a full multi-user database with row-level conflict handling. It is good for the first company test phase because several browsers can load and save the same shared kennel data. If two people edit the exact same record at the same time, the newest merged version may win. Keep JSON backups until the workflow has been tested in daily use.

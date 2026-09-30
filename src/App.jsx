@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Dashboard from "./components/Dashboard";
 import Dogs from "./components/Dogs";
 import NewTraining from "./components/NewTraining";
@@ -13,6 +13,8 @@ import FixedTeams from "./components/FixedTeams";
 import HealthNotes from "./components/HealthNotes";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { defaultState, loadState, saveState } from "./utils/storage";
+import { fetchCloudState, saveCloudState, getCloudAccessCode, setCloudAccessCode, describeCloudError } from "./utils/cloudSync";
+import { mergeStates } from "./utils/stateMerge";
 import { calculateAllDogStats } from "./utils/statistics";
 
 const PRIMARY_TABS = [
@@ -43,8 +45,22 @@ export default function App() {
   const [toast, setToast] = useState("");
   const [editingTrainingId, setEditingTrainingId] = useState(null);
   const [prefillTeam, setPrefillTeam] = useState(null);
+  const [cloudAccessCode, setCloudAccessCodeValue] = useState(() => getCloudAccessCode());
+  const [cloudStatus, setCloudStatus] = useState({
+    ready: false,
+    available: false,
+    saving: false,
+    loading: true,
+    needsCode: false,
+    lastSyncedAt: "",
+    remoteUpdatedAt: "",
+    message: "Checking cloud sync...",
+  });
+  const stateRef = useRef(state);
+  const cloudReadyRef = useRef(false);
 
   useEffect(() => {
+    stateRef.current = state;
     saveState(state);
   }, [state]);
 
@@ -53,6 +69,99 @@ export default function App() {
     const timer = setTimeout(() => setToast(""), 3200);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  const updateCloudAccessCode = useCallback((value) => {
+    setCloudAccessCodeValue(value);
+    setCloudAccessCode(value);
+    setCloudStatus((current) => ({ ...current, needsCode: false, message: "Cloud access code saved. Sync again to check it." }));
+  }, []);
+
+  const syncWithCloud = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) {
+      setCloudStatus((current) => ({ ...current, loading: true, message: "Syncing with cloud..." }));
+    }
+
+    try {
+      const remote = await fetchCloudState(cloudAccessCode);
+      const merged = remote?.state ? mergeStates(remote.state, stateRef.current) : stateRef.current;
+      setState(merged);
+      const saved = await saveCloudState(merged, cloudAccessCode, "merge");
+      const syncedAt = new Date().toISOString();
+      cloudReadyRef.current = true;
+      setCloudStatus({
+        ready: true,
+        available: true,
+        saving: false,
+        loading: false,
+        needsCode: false,
+        lastSyncedAt: syncedAt,
+        remoteUpdatedAt: saved?.updatedAt || remote?.updatedAt || "",
+        message: "Cloud sync active.",
+      });
+      if (!silent) setToast("Cloud sync complete.");
+      return merged;
+    } catch (error) {
+      const message = describeCloudError(error);
+      cloudReadyRef.current = false;
+      setCloudStatus((current) => ({
+        ...current,
+        ready: false,
+        available: false,
+        saving: false,
+        loading: false,
+        needsCode: error?.status === 401,
+        message,
+      }));
+      if (!silent) setToast(message);
+      return null;
+    }
+  }, [cloudAccessCode]);
+
+  const saveCurrentStateToCloud = useCallback(async ({ silent = false } = {}) => {
+    try {
+      setCloudStatus((current) => ({ ...current, saving: true, message: "Saving to cloud..." }));
+      const saved = await saveCloudState(stateRef.current, cloudAccessCode, "merge");
+      const syncedAt = new Date().toISOString();
+      cloudReadyRef.current = true;
+      setCloudStatus((current) => ({
+        ...current,
+        ready: true,
+        available: true,
+        saving: false,
+        loading: false,
+        needsCode: false,
+        lastSyncedAt: syncedAt,
+        remoteUpdatedAt: saved?.updatedAt || current.remoteUpdatedAt || "",
+        message: "Saved to cloud.",
+      }));
+      if (!silent) setToast("Saved to cloud.");
+    } catch (error) {
+      const message = describeCloudError(error);
+      if (error?.status !== 404) cloudReadyRef.current = false;
+      setCloudStatus((current) => ({
+        ...current,
+        ready: false,
+        available: false,
+        saving: false,
+        loading: false,
+        needsCode: error?.status === 401,
+        message,
+      }));
+      if (!silent) setToast(message);
+    }
+  }, [cloudAccessCode]);
+
+  useEffect(() => {
+    syncWithCloud({ silent: true });
+  }, [syncWithCloud]);
+
+  useEffect(() => {
+    if (!cloudReadyRef.current) return undefined;
+    const timer = setTimeout(() => {
+      saveCurrentStateToCloud({ silent: true });
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [state, saveCurrentStateToCloud]);
 
   const dogsWithStats = useMemo(
     () => calculateAllDogStats(state.dogs, state.trainingLog),
@@ -377,7 +486,14 @@ export default function App() {
             <p className="eyebrow">Kennel Training Management</p>
             <h1>Dog Training Tracker</h1>
           </div>
-          <button className="primary mobile-main-action" onClick={() => openTab("quick-training")}>Quick Training</button>
+          <div className="topbar-actions">
+            <div className={cloudStatus.available ? "cloud-pill online" : cloudStatus.loading ? "cloud-pill loading" : "cloud-pill offline"} title={cloudStatus.message}>
+              <span aria-hidden="true">{cloudStatus.available ? "☁️" : cloudStatus.loading ? "⏳" : "⚠️"}</span>
+              <span>{cloudStatus.available ? "Cloud on" : cloudStatus.loading ? "Cloud..." : "Local"}</span>
+            </div>
+            <button className="secondary compact-button" onClick={() => syncWithCloud()} disabled={cloudStatus.loading || cloudStatus.saving}>Sync</button>
+            <button className="primary mobile-main-action" onClick={() => openTab("quick-training")}>Quick Training</button>
+          </div>
         </header>
 
         <nav className="tabbar clean-tabbar" aria-label="Main navigation">
@@ -441,7 +557,7 @@ export default function App() {
           {activeTab === "log" && <TrainingLog logs={state.trainingLog} dogs={state.dogs} sessions={state.trainingSessions} />}
           {activeTab === "routes" && <Routes routes={state.routes} onAddRoute={addRoute} onUpdateRoute={updateRoute} onDeleteRoute={deleteRoute} />}
           {activeTab === "guides" && <Guides guides={state.guides || []} onAddGuide={addGuide} onUpdateGuide={updateGuide} onDeleteGuide={deleteGuide} />}
-          {activeTab === "data" && <DataManagement state={state} onRestoreState={restoreState} onResetAllData={resetAllData} onBackupDownloaded={markBackupDownloaded} onExcelExported={markExcelExported} />}
+          {activeTab === "data" && <DataManagement state={state} onRestoreState={restoreState} onResetAllData={resetAllData} onBackupDownloaded={markBackupDownloaded} onExcelExported={markExcelExported} cloudStatus={cloudStatus} onSyncCloud={syncWithCloud} onSaveCloud={saveCurrentStateToCloud} cloudAccessCode={cloudAccessCode} onCloudAccessCodeChange={updateCloudAccessCode} />}
         </main>
 
         {toast && <div className="toast">{toast}</div>}

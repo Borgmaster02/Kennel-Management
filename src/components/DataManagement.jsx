@@ -2,7 +2,7 @@ import { downloadCsv, dogHeaders, fixedTeamHeaders, healthHeaders, logHeaders, s
 import { downloadJson, readJsonFile, validateImportedState } from "../utils/backup";
 import { downloadBeautifulExcel } from "../utils/exportExcel";
 
-export default function DataManagement({ state, onRestoreState, onResetAllData, onBackupDownloaded, onExcelExported }) {
+export default function DataManagement({ state, onRestoreState, onResetAllData, onBackupDownloaded, onExcelExported, cloudStatus, onSyncCloud, onSaveCloud, cloudAccessCode, onCloudAccessCodeChange }) {
   const today = new Date().toISOString().slice(0, 10);
   const preparedLogs = prepareLogsForExport(state.trainingLog || [], state.trainingSessions || []);
   const preparedTeams = prepareFixedTeamsForExport(state.fixedTeams || [], state.dogs || []);
@@ -58,6 +58,41 @@ export default function DataManagement({ state, onRestoreState, onResetAllData, 
           <article className="stat-card"><span>Last Excel-style export</span><strong>{state.meta?.lastExcelExportAt ? formatDateTime(state.meta.lastExcelExportAt) : "Never"}</strong></article>
         </div>
         <p className="muted-text">Local browser storage can be lost when a preview environment is reset. Download a JSON backup regularly, especially before uploading a new website version. Sessions since backup: {Math.max(0, (state.trainingSessions || []).length - Number(state.meta?.lastBackupSessionCount || 0))}.</p>
+      </section>
+
+      <section className="panel cloud-sync-panel">
+        <div className="panel-heading-row">
+          <div>
+            <p className="eyebrow">Shared database</p>
+            <h3>Cloud Sync</h3>
+          </div>
+          <span className={cloudStatus?.available ? "status-pill success" : cloudStatus?.loading ? "status-pill warning" : "status-pill danger"}>
+            {cloudStatus?.available ? "Connected" : cloudStatus?.loading ? "Checking" : "Local only"}
+          </span>
+        </div>
+        <p className="muted-text">
+          Cloud Sync loads and saves the shared kennel data through the website API. When Neon is configured on Vercel, different browsers can open the same link and see the same trainings after sync. Local browser storage stays as a fallback.
+        </p>
+        <div className="cloud-status-box">
+          <strong>{cloudStatus?.message || "Cloud sync status unknown."}</strong>
+          <span>Last synced: {cloudStatus?.lastSyncedAt ? formatDateTime(cloudStatus.lastSyncedAt) : "Not yet"}</span>
+          <span>Cloud updated: {cloudStatus?.remoteUpdatedAt ? formatDateTime(cloudStatus.remoteUpdatedAt) : "Unknown"}</span>
+        </div>
+        <div className="form-grid two">
+          <label>
+            Optional access code
+            <input
+              type="password"
+              value={cloudAccessCode || ""}
+              onChange={(event) => onCloudAccessCodeChange?.(event.target.value)}
+              placeholder="Only needed if configured on Vercel"
+            />
+          </label>
+        </div>
+        <div className="button-row wrap">
+          <button className="primary" onClick={() => onSyncCloud?.()} disabled={cloudStatus?.loading || cloudStatus?.saving}>Sync now</button>
+          <button className="secondary" onClick={() => onSaveCloud?.()} disabled={cloudStatus?.loading || cloudStatus?.saving}>Save current data to cloud</button>
+        </div>
       </section>
 
       <div className="two-column">
