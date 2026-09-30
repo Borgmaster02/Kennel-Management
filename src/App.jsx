@@ -45,6 +45,7 @@ export default function App() {
   const [toast, setToast] = useState("");
   const [editingTrainingId, setEditingTrainingId] = useState(null);
   const [prefillTeam, setPrefillTeam] = useState(null);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [cloudAccessCode, setCloudAccessCodeValue] = useState(() => getCloudAccessCode());
   const [cloudStatus, setCloudStatus] = useState({
     ready: false,
@@ -117,10 +118,10 @@ export default function App() {
     }
   }, [cloudAccessCode]);
 
-  const saveCurrentStateToCloud = useCallback(async ({ silent = false } = {}) => {
+  const saveCurrentStateToCloud = useCallback(async ({ silent = false, mode = "merge" } = {}) => {
     try {
       setCloudStatus((current) => ({ ...current, saving: true, message: "Saving to cloud..." }));
-      const saved = await saveCloudState(stateRef.current, cloudAccessCode, "merge");
+      const saved = await saveCloudState(stateRef.current, cloudAccessCode, mode);
       const syncedAt = new Date().toISOString();
       cloudReadyRef.current = true;
       setCloudStatus((current) => ({
@@ -182,6 +183,7 @@ export default function App() {
   };
 
   const openTab = (tabId) => {
+    setMoreMenuOpen(false);
     if (tabId !== "new-training") {
       setEditingTrainingId(null);
       setPrefillTeam(null);
@@ -237,9 +239,16 @@ export default function App() {
     setState((current) => {
       const guide = String(session.guide || "").trim();
       const guides = guide ? Array.from(new Set([...(current.guides || []), guide])) : current.guides || [];
+      const previousLogs = current.trainingLog.filter((log) => log.trainingId === session.id);
+      const nextLogIds = new Set(logEntries.map((log) => log.id));
+      const removedLogIds = previousLogs.filter((log) => !nextLogIds.has(log.id)).map((log) => log.id);
       return {
         ...current,
         guides,
+        meta: {
+          ...(current.meta || {}),
+          deletedTrainingLogIds: Array.from(new Set([...(current.meta?.deletedTrainingLogIds || []), ...removedLogIds])),
+        },
         trainingSessions: current.trainingSessions.map((item) => (item.id === session.id ? session : item)),
         trainingLog: [...logEntries, ...current.trainingLog.filter((log) => log.trainingId !== session.id)],
       };
@@ -247,7 +256,7 @@ export default function App() {
     setEditingTrainingId(null);
     setPrefillTeam(null);
     setActiveTab("sessions");
-    setToast("Training updated.");
+    setToast("Training updated and queued for cloud sync.");
   };
 
   const startEditTraining = (trainingId) => {
@@ -265,13 +274,21 @@ export default function App() {
   const deleteTraining = (trainingId) => {
     const confirmed = window.confirm("Delete this training session and all connected dog log entries?");
     if (!confirmed) return;
-    setState((current) => ({
-      ...current,
-      trainingSessions: current.trainingSessions.filter((session) => session.id !== trainingId),
-      trainingLog: current.trainingLog.filter((log) => log.trainingId !== trainingId),
-    }));
+    setState((current) => {
+      const removedLogIds = current.trainingLog.filter((log) => log.trainingId === trainingId).map((log) => log.id);
+      return {
+        ...current,
+        meta: {
+          ...(current.meta || {}),
+          deletedTrainingSessionIds: Array.from(new Set([...(current.meta?.deletedTrainingSessionIds || []), trainingId])),
+          deletedTrainingLogIds: Array.from(new Set([...(current.meta?.deletedTrainingLogIds || []), ...removedLogIds])),
+        },
+        trainingSessions: current.trainingSessions.filter((session) => session.id !== trainingId),
+        trainingLog: current.trainingLog.filter((log) => log.trainingId !== trainingId),
+      };
+    });
     if (editingTrainingId === trainingId) setEditingTrainingId(null);
-    setToast("Training deleted.");
+    setToast("Training deleted and queued for cloud sync.");
   };
 
   const addRoute = (route) => {
@@ -290,8 +307,15 @@ export default function App() {
   const deleteRoute = (routeId) => {
     const confirmed = window.confirm("Delete this route? Existing training records will stay unchanged.");
     if (!confirmed) return;
-    setState((current) => ({ ...current, routes: current.routes.filter((route) => route.id !== routeId) }));
-    setToast("Route deleted.");
+    setState((current) => ({
+      ...current,
+      meta: {
+        ...(current.meta || {}),
+        deletedRouteIds: Array.from(new Set([...(current.meta?.deletedRouteIds || []), routeId])),
+      },
+      routes: current.routes.filter((route) => route.id !== routeId),
+    }));
+    setToast("Route deleted and queued for cloud sync.");
   };
 
   const addGuide = (name) => {
@@ -356,8 +380,15 @@ export default function App() {
       ? `Delete ${team?.name || "this fixed team"} from templates? Saved trainings will keep the team name.`
       : `Delete ${team?.name || "this fixed team"}?`;
     if (!window.confirm(message)) return;
-    setState((current) => ({ ...current, fixedTeams: (current.fixedTeams || []).filter((item) => item.id !== teamId) }));
-    setToast("Fixed team deleted.");
+    setState((current) => ({
+      ...current,
+      meta: {
+        ...(current.meta || {}),
+        deletedFixedTeamIds: Array.from(new Set([...(current.meta?.deletedFixedTeamIds || []), teamId])),
+      },
+      fixedTeams: (current.fixedTeams || []).filter((item) => item.id !== teamId),
+    }));
+    setToast("Fixed team deleted and queued for cloud sync.");
   };
 
   const duplicateFixedTeam = (teamId) => {
@@ -443,8 +474,15 @@ export default function App() {
 
   const deleteHealthEvent = (eventId) => {
     if (!window.confirm("Delete this health note?")) return;
-    setState((current) => ({ ...current, healthEvents: (current.healthEvents || []).filter((item) => item.id !== eventId) }));
-    setToast("Health note deleted.");
+    setState((current) => ({
+      ...current,
+      meta: {
+        ...(current.meta || {}),
+        deletedHealthEventIds: Array.from(new Set([...(current.meta?.deletedHealthEventIds || []), eventId])),
+      },
+      healthEvents: (current.healthEvents || []).filter((item) => item.id !== eventId),
+    }));
+    setToast("Health note deleted and queued for cloud sync.");
   };
 
   const markBackupDownloaded = () => {
@@ -505,23 +543,32 @@ export default function App() {
               </button>
             ))}
           </div>
-          <details className="more-menu">
-            <summary className={SECONDARY_TABS.some((tab) => tab.id === activeTab) ? "tab active" : "tab"}>
+          <div className={moreMenuOpen ? "more-menu open" : "more-menu"}>
+            <button type="button" className={SECONDARY_TABS.some((tab) => tab.id === activeTab) ? "tab active" : "tab"} onClick={() => setMoreMenuOpen((current) => !current)}>
               <span className="tab-icon" aria-hidden="true">☰</span><span>More</span>
-            </summary>
-            <div className="more-menu-panel">
-              {SECONDARY_TABS.map((tab) => (
-                <button key={tab.id} className={activeTab === tab.id ? "tab active" : "tab"} onClick={() => openTab(tab.id)}>
-                  <span className="tab-icon" aria-hidden="true">{tab.icon}</span>
-                  <span>{tab.label}</span>
-                </button>
-              ))}
-            </div>
-          </details>
+            </button>
+            {moreMenuOpen && (
+              <>
+                <button className="more-menu-backdrop" aria-label="Close menu" onClick={() => setMoreMenuOpen(false)} />
+                <div className="more-menu-panel">
+                  <div className="more-menu-header">
+                    <strong>More tools</strong>
+                    <button className="icon-button" onClick={() => setMoreMenuOpen(false)} aria-label="Close menu">×</button>
+                  </div>
+                  {SECONDARY_TABS.map((tab) => (
+                    <button key={tab.id} className={activeTab === tab.id ? "tab active" : "tab"} onClick={() => openTab(tab.id)}>
+                      <span className="tab-icon" aria-hidden="true">{tab.icon}</span>
+                      <span>{tab.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </nav>
 
         <main className="main-content">
-          {activeTab === "dashboard" && <Dashboard dogs={activeDogsWithStats} sessions={state.trainingSessions} logs={state.trainingLog} healthEvents={state.healthEvents || []} meta={state.meta || {}} />}
+          {activeTab === "dashboard" && <Dashboard dogs={activeDogsWithStats} sessions={state.trainingSessions} logs={state.trainingLog} healthEvents={state.healthEvents || []} meta={state.meta || {}} onEditTraining={startEditTraining} onDeleteTraining={deleteTraining} onOpenSessions={() => openTab("sessions")} />}
           {activeTab === "quick-training" && (
             <QuickTraining
               dogs={activeDogsWithStats}
@@ -531,6 +578,11 @@ export default function App() {
               onSave={saveTraining}
               lastQuickTraining={state.meta?.lastQuickTraining || null}
               backupStatus={backupStatus}
+              sessions={state.trainingSessions}
+              logs={state.trainingLog}
+              onEditTraining={startEditTraining}
+              onDeleteTraining={deleteTraining}
+              onOpenSessions={() => openTab("sessions")}
               onOpenFullTraining={() => openTab("new-training")}
             />
           )}

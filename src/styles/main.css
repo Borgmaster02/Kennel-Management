@@ -1121,3 +1121,139 @@ button:disabled { opacity: .55; cursor: not-allowed; }
     flex-direction: column;
   }
 }
+
+/* v17 shared sync deletion safety, mobile menu and recent trainings */
+.danger-button {
+  border: 0;
+  border-radius: 14px;
+  padding: 0.75rem 1rem;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  background: var(--red-bg);
+  color: var(--red-text);
+}
+
+.more-menu > button.tab {
+  border: 1px solid transparent;
+}
+
+.more-menu.open > button.tab {
+  background: var(--primary);
+  color: white;
+}
+
+.more-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 990;
+  border: 0;
+  background: transparent;
+}
+
+.more-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 0.25rem;
+}
+
+.recent-trainings-panel {
+  border-left: 5px solid var(--primary);
+}
+
+.recent-training-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.recent-training-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  padding: 0.85rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+
+.recent-training-main {
+  min-width: 0;
+}
+
+.recent-training-main strong,
+.recent-training-main span,
+.recent-training-main small {
+  display: block;
+}
+
+.recent-training-main span,
+.recent-training-main small {
+  color: var(--muted);
+  margin-top: 0.15rem;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.recent-training-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+}
+
+.recent-sync-note {
+  margin: 0.75rem 0 0;
+}
+
+@media (max-width: 720px) {
+  .more-menu-panel {
+    position: fixed;
+    left: 0.75rem;
+    right: 0.75rem;
+    top: auto;
+    bottom: calc(5.3rem + env(safe-area-inset-bottom));
+    max-height: min(70vh, 560px);
+    overflow-y: auto;
+    z-index: 1001;
+    padding: 0.8rem;
+    border-radius: 1.25rem;
+  }
+
+  .more-menu-backdrop {
+    background: rgba(15, 23, 42, 0.18);
+  }
+
+  .more-menu-panel .tab {
+    min-height: 52px;
+    border-radius: 1rem;
+    background: var(--surface-soft);
+    color: var(--text);
+    border-color: var(--line);
+  }
+
+  .more-menu-panel .tab.active {
+    background: var(--primary);
+    color: white;
+  }
+
+  .recent-training-card {
+    display: grid;
+  }
+
+  .recent-training-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .recent-training-actions button {
+    width: 100%;
+  }
+}

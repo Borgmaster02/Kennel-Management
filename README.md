@@ -109,3 +109,15 @@ If `KENNEL_ACCESS_CODE` is set, users must enter it under **Data → Cloud Sync*
 ### Important limitations
 
 This is shared-state sync, not yet a full multi-user database with row-level conflict handling. It is good for the first company test phase because several browsers can load and save the same shared kennel data. If two people edit the exact same record at the same time, the newest merged version may win. Keep JSON backups until the workflow has been tested in daily use.
+
+## v17 notes: mobile menu and cloud deletion sync
+
+This version improves shared cloud usage after real device testing:
+
+- Deleted training sessions now create internal delete markers, so normal Cloud Sync should not bring deleted sessions back from Neon.
+- Editing a training and removing dogs from it also marks the removed dog log entries as deleted for sync.
+- Recent trainings are shown on Dashboard and Quick Training with direct Edit and Delete actions.
+- The mobile More menu opens as a larger overlay instead of disappearing behind the scroll area.
+- Data > Cloud Sync now separates normal Sync from a stronger "Force save this device to cloud" action.
+
+For normal work, use **Sync now**. Use **Force save this device to cloud** only when the current device has the correct data and the cloud should be overwritten with that exact state.

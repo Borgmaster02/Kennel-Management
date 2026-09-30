@@ -71,7 +71,7 @@ export default function DataManagement({ state, onRestoreState, onResetAllData, 
           </span>
         </div>
         <p className="muted-text">
-          Cloud Sync loads and saves the shared kennel data through the website API. When Neon is configured on Vercel, different browsers can open the same link and see the same trainings after sync. Local browser storage stays as a fallback.
+          Cloud Sync loads and saves the shared kennel data through the website API. Deletions are now protected during sync, so a deleted training should not come back from the cloud. Local browser storage stays as a fallback.
         </p>
         <div className="cloud-status-box">
           <strong>{cloudStatus?.message || "Cloud sync status unknown."}</strong>
@@ -91,8 +91,9 @@ export default function DataManagement({ state, onRestoreState, onResetAllData, 
         </div>
         <div className="button-row wrap">
           <button className="primary" onClick={() => onSyncCloud?.()} disabled={cloudStatus?.loading || cloudStatus?.saving}>Sync now</button>
-          <button className="secondary" onClick={() => onSaveCloud?.()} disabled={cloudStatus?.loading || cloudStatus?.saving}>Save current data to cloud</button>
+          <button className="secondary" onClick={() => onSaveCloud?.({ mode: "replace" })} disabled={cloudStatus?.loading || cloudStatus?.saving}>Force save this device to cloud</button>
         </div>
+        <p className="muted-text">Use <strong>Sync now</strong> for normal work. Use <strong>Force save this device to cloud</strong> only when this device has the correct state and you want the cloud to match it exactly.</p>
       </section>
 
       <div className="two-column">

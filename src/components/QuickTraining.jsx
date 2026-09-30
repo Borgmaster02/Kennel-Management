@@ -3,10 +3,11 @@ import { TRAINING_TYPES } from "../data/options";
 import { todayIso } from "../utils/dateUtils";
 import { EmptyState, StatusBadge } from "./common";
 import { makeTrainingId } from "../utils/ids";
+import RecentTrainings from "./RecentTrainings";
 
 const QUICK_KM = [3, 5, 8, 10, 12, 15, 20, 25];
 
-export default function QuickTraining({ dogs, routes = [], guides = [], fixedTeams = [], lastQuickTraining = null, backupStatus = null, onSave, onOpenFullTraining }) {
+export default function QuickTraining({ dogs, routes = [], guides = [], fixedTeams = [], lastQuickTraining = null, backupStatus = null, sessions = [], logs = [], onSave, onEditTraining, onDeleteTraining, onOpenSessions, onOpenFullTraining }) {
   const [date, setDate] = useState(todayIso());
   const [trainingType, setTrainingType] = useState(lastQuickTraining?.trainingType || "ATV");
   const [routeName, setRouteName] = useState(lastQuickTraining?.routeName || "");
@@ -314,6 +315,15 @@ export default function QuickTraining({ dogs, routes = [], guides = [], fixedTea
           </div>
         </section>
       )}
+
+      <RecentTrainings
+        sessions={sessions}
+        logs={logs}
+        onEditTraining={onEditTraining}
+        onDeleteTraining={onDeleteTraining}
+        onOpenSessions={onOpenSessions}
+        limit={4}
+      />
     </section>
   );
 }

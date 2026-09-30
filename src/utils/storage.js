@@ -3,7 +3,7 @@ import { DEFAULT_GUIDES, INITIAL_ROUTES } from "../data/options.js";
 
 export const STORAGE_KEY = "dog-training-tracker-data";
 export const LEGACY_STORAGE_KEYS = ["dog-training-tracker-v1"];
-export const DATA_VERSION = 16;
+export const DATA_VERSION = 17;
 
 export const defaultState = {
   dataVersion: DATA_VERSION,
@@ -14,7 +14,17 @@ export const defaultState = {
   guides: DEFAULT_GUIDES,
   fixedTeams: [],
   healthEvents: [],
-  meta: { lastBackupAt: "", lastExcelExportAt: "", lastBackupSessionCount: 0, lastQuickTraining: null },
+  meta: {
+    lastBackupAt: "",
+    lastExcelExportAt: "",
+    lastBackupSessionCount: 0,
+    lastQuickTraining: null,
+    deletedTrainingSessionIds: [],
+    deletedTrainingLogIds: [],
+    deletedHealthEventIds: [],
+    deletedFixedTeamIds: [],
+    deletedRouteIds: [],
+  },
 };
 
 function clone(value) {
@@ -152,6 +162,11 @@ export function migrateState(value) {
       lastExcelExportAt: source.meta?.lastExcelExportAt || "",
       lastBackupSessionCount: Number(source.meta?.lastBackupSessionCount || 0),
       lastQuickTraining: source.meta?.lastQuickTraining && typeof source.meta.lastQuickTraining === "object" ? source.meta.lastQuickTraining : null,
+      deletedTrainingSessionIds: Array.isArray(source.meta?.deletedTrainingSessionIds) ? source.meta.deletedTrainingSessionIds : [],
+      deletedTrainingLogIds: Array.isArray(source.meta?.deletedTrainingLogIds) ? source.meta.deletedTrainingLogIds : [],
+      deletedHealthEventIds: Array.isArray(source.meta?.deletedHealthEventIds) ? source.meta.deletedHealthEventIds : [],
+      deletedFixedTeamIds: Array.isArray(source.meta?.deletedFixedTeamIds) ? source.meta.deletedFixedTeamIds : [],
+      deletedRouteIds: Array.isArray(source.meta?.deletedRouteIds) ? source.meta.deletedRouteIds : [],
     },
   };
 }

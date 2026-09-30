@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { getDashboardStats } from "../utils/statistics";
 import { formatDate } from "../utils/dateUtils";
 import { StatusBadge, StatCard, EmptyState } from "./common";
+import RecentTrainings from "./RecentTrainings";
 
-export default function Dashboard({ dogs, sessions, logs, healthEvents = [], meta = {} }) {
+export default function Dashboard({ dogs, sessions, logs, healthEvents = [], meta = {}, onEditTraining, onDeleteTraining, onOpenSessions }) {
   const stats = useMemo(() => getDashboardStats(dogs, sessions, logs, healthEvents, meta), [dogs, sessions, logs, healthEvents, meta]);
   const [kmSort, setKmSort] = useState("asc");
   const dogsByKm = useMemo(() => [...stats.dogsWithStats].sort((a, b) => {
@@ -27,6 +28,16 @@ export default function Dashboard({ dogs, sessions, logs, healthEvents = [], met
           <p>You have saved {stats.sessionsSinceBackup} training sessions since the last full JSON backup. Download a backup in the Data tab before uploading a new website version.</p>
         </section>
       )}
+
+
+      <RecentTrainings
+        sessions={sessions}
+        logs={logs}
+        onEditTraining={onEditTraining}
+        onDeleteTraining={onDeleteTraining}
+        onOpenSessions={onOpenSessions}
+        limit={5}
+      />
 
       <div className="stats-grid">
         <StatCard label="Active dogs" value={stats.activeDogCount} hint="Archived dogs are not counted" />
